@@ -1,0 +1,34 @@
+{
+  "algorithm": "hmac-sha256",
+  "description": "signed_content = `${timestamp}.${payload}` (payload is the exact raw body bytes). signature = 'v1=' + hex(hmac_sha256(key=secret, message=signed_content)). See docs/SIGNATURE_SPEC.md.",
+  "vectors": [
+    {
+      "name": "simple-order-event",
+      "secret": "whsec_test_secret_123",
+      "timestamp": 1700000000,
+      "payload": "{\"eventType\":\"order.created\",\"payload\":{\"orderId\":\"ord_123\"}}",
+      "expectedSignature": "v1=5ad9bc8a87d2e561253b2ad4f06d016b281a323d30afb55a68bc93df2812745d"
+    },
+    {
+      "name": "empty-payload-object",
+      "secret": "whsec_test_secret_123",
+      "timestamp": 1700000000,
+      "payload": "{}",
+      "expectedSignature": "v1=c61da39a83078801eed36e027527ac71718ca621c86556f5c44b6213bd6952cd"
+    },
+    {
+      "name": "unicode-payload",
+      "secret": "whsec_unicode_secret",
+      "timestamp": 1739812800,
+      "payload": "{\"message\":\"héllo wörld 你好\"}",
+      "expectedSignature": "v1=e786cdeac2fc54b312732cc76de403ce12ab9fef2e164498012be5fadbce2db2"
+    },
+    {
+      "name": "long-secret",
+      "secret": "whsec_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "timestamp": 1609459200,
+      "payload": "{\"a\":1,\"b\":[1,2,3]}",
+      "expectedSignature": "v1=b77d85b43d6fb1bd6f8e5de3495aa90dcf8bba5e2df56d00324a3b39e6c9dcbe"
+    }
+  ]
+}

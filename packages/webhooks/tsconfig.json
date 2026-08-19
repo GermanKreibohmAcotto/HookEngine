@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // tsup's dts bundler sets its own internal `baseUrl`, which TS 6.0's
+    // stricter deprecation checks now hard-error on — this is TS's own
+    // documented escape hatch, not a project-wide relaxation.
+    "ignoreDeprecations": "6.0",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "tsup.config.ts"]
+}

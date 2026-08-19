@@ -1,0 +1,50 @@
+{
+  "name": "@hookengine/api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HookEngine backend — HTTP ingestion + delivery worker (NestJS)",
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "scripts": {
+    "build": "nest build",
+    "start:http:dev": "nest start --watch --entryFile main.http",
+    "start:worker:dev": "nest start --watch --entryFile main.worker",
+    "start:http": "node dist/main.http.js",
+    "start:worker": "node dist/main.worker.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "node dist/shared/db/migrate.js",
+    "db:migrate:dev": "tsx src/shared/db/migrate.ts",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@hookengine/webhooks": "^0.1.0",
+    "@nestjs/common": "^11.2.1",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.2.1",
+    "@nestjs/platform-express": "^11.2.1",
+    "bullmq": "^6.1.2",
+    "drizzle-orm": "^0.45.2",
+    "ioredis": "^5.11.1",
+    "ipaddr.js": "^2.5.0",
+    "pg": "^8.23.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1",
+    "undici": "^8.10.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@nestjs/schematics": "^11.1.0",
+    "@nestjs/testing": "^11.2.1",
+    "@swc/core": "^1.16.0",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.12",
+    "unplugin-swc": "^1.5.11",
+    "vitest": "^4.1.11"
+  }
+}

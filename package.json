@@ -1,0 +1,39 @@
+{
+  "name": "hookengine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Reliable webhook delivery engine with retries, DLQ, and HMAC signing",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "workspaces": [
+    "apps/api",
+    "apps/web",
+    "packages/webhooks"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run db:generate -w apps/api",
+    "db:migrate": "npm run db:migrate -w apps/api",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm run build -w @hookengine/webhooks && changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^1.0.0",
+    "@changesets/cli": "^3.0.0",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.1",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.5",
+    "prettier": "^3.9.6",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.67.0"
+  }
+}

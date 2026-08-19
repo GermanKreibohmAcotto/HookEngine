@@ -1,0 +1,6 @@
+dist/
+build/
+coverage/
+node_modules/
+apps/api/drizzle/
+package-lock.json
