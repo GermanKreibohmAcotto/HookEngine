@@ -1,12 +1,8 @@
-import {
-  type CanActivate,
-  type ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import type { Env } from '../config/env.schema';
+import { unauthorizedError } from '../http/error-codes';
 import { timingSafeEqualStrings } from './api-key.guard';
 
 interface RequestWithAuth {
@@ -32,12 +28,12 @@ export class SseApiKeyGuard implements CanActivate {
       : request.query.apiKey;
 
     if (!presented) {
-      throw new UnauthorizedException('Missing API key');
+      throw unauthorizedError('Missing API key', 'AUTH_HEADER_MISSING');
     }
 
     const expected = this.config.get('INGEST_API_KEY', { infer: true });
     if (!timingSafeEqualStrings(presented, expected)) {
-      throw new UnauthorizedException('Invalid API key');
+      throw unauthorizedError('Invalid API key', 'AUTH_KEY_INVALID');
     }
 
     return true;

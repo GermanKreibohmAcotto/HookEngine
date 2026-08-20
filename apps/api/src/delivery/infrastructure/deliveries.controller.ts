@@ -1,15 +1,7 @@
-import {
-  Controller,
-  Get,
-  Inject,
-  NotFoundException,
-  Param,
-  Query,
-  UseGuards,
-  UsePipes,
-} from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query, UseGuards, UsePipes } from '@nestjs/common';
 
 import { ApiKeyGuard } from '../../shared/auth/api-key.guard';
+import { notFoundError } from '../../shared/http/error-codes';
 import { ZodValidationPipe } from '../../shared/validation/zod-validation.pipe';
 import {
   DELIVERY_REPOSITORY,
@@ -43,7 +35,7 @@ export class DeliveriesController {
   async get(@Param('id') id: string) {
     const result = await this.deliveries.getWithAttempts(id);
     if (!result) {
-      throw new NotFoundException(`Delivery ${id} not found`);
+      throw notFoundError(`Delivery ${id} not found`, 'DELIVERY_NOT_FOUND');
     }
 
     return {

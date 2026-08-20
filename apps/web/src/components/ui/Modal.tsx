@@ -22,7 +22,7 @@ export function Modal({ title, onClose, children }: ModalProps) {
             type="button"
             onClick={onClose}
             className="text-slate-500 hover:text-slate-300"
-            aria-label="Close"
+            aria-label="Cerrar"
           >
             ✕
           </button>

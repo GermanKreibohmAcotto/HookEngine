@@ -1,66 +1,66 @@
-# Contributing to HookEngine
+# Contribuir a HookEngine
 
-Thanks for taking the time to contribute. This document covers local setup,
-conventions, and how a change gets from your machine into `main`.
+Gracias por tomarte el tiempo de contribuir. Este documento cubre el setup
+local, las convenciones, y cómo un cambio llega desde tu máquina hasta `main`.
 
-## Local setup
+## Setup local
 
-Requirements: Node.js 22+, Docker + Docker Compose.
+Requisitos: Node.js 22+, Docker + Docker Compose.
 
 ```bash
 git clone https://github.com/hookengine/hookengine.git
 cd hookengine
-cp .env.example .env          # then edit the generated secrets, see below
+cp .env.example .env          # después editá los secretos generados, ver abajo
 npm install
 docker compose up -d postgres redis
 npm run db:migrate -w apps/api
-npm run dev -w apps/api       # or: docker compose up --build
+npm run dev -w apps/api       # o: docker compose up --build
 ```
 
-Generate real values for the two secrets in `.env` before starting anything:
+Generá valores reales para los dos secretos en `.env` antes de arrancar nada:
 
 ```bash
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"  # SECRET_ENCRYPTION_KEY
 node -e "console.log(require('node:crypto').randomBytes(24).toString('hex'))"  # INGEST_API_KEY
 ```
 
-## Project layout
+## Organización del proyecto
 
-This is a monorepo (npm workspaces). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-for the full picture; the short version:
+Esto es un monorepo (npm workspaces). Ver [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+para el panorama completo; la versión corta:
 
-- `apps/api` — NestJS backend. Two entrypoints (`main.http.ts`, `main.worker.ts`)
-  sharing one codebase. Each domain module (`delivery`, `subscriptions`, `events`)
-  is split into `domain/` (framework-free), `application/` (use cases + ports),
-  and `infrastructure/` (adapters — Drizzle, BullMQ, undici, controllers).
-- `apps/web` — the admin dashboard (Vite + React).
-- `packages/webhooks` — the public `@hookengine/webhooks` SDK. This is published
-  to npm, so changes here need a changeset (see below) and are held to a
-  stricter bar: zero runtime dependencies, dual ESM/CJS output, semver taken
-  seriously.
-- `tools/test-receiver` — a small HTTP server used in integration tests and as
-  a live example of verifying a webhook with the SDK.
+- `apps/api` — backend NestJS. Dos entrypoints (`main.http.ts`, `main.worker.ts`)
+  que comparten un mismo código. Cada módulo de dominio (`delivery`, `subscriptions`, `events`)
+  se divide en `domain/` (sin framework), `application/` (casos de uso + puertos)
+  e `infrastructure/` (adaptadores — Drizzle, BullMQ, undici, controllers).
+- `apps/web` — el panel de administración (Vite + React).
+- `packages/webhooks` — el SDK público `@hookengine/webhooks`. Se publica
+  en npm, así que los cambios acá necesitan un changeset (ver abajo) y se
+  sostienen contra una vara más exigente: cero dependencias en runtime,
+  salida dual ESM/CJS, semver tomado en serio.
+- `tools/test-receiver` — un servidor HTTP chico usado en tests de integración
+  y como ejemplo vivo de verificación de un webhook con el SDK.
 
-**The rule that matters most:** nothing in `domain/` imports NestJS, Drizzle, or
-BullMQ. If you find yourself importing one there, the code belongs in
-`infrastructure/` instead.
+**La regla que más importa:** nada en `domain/` importa NestJS, Drizzle ni
+BullMQ. Si te encontrás importando alguno ahí, ese código pertenece a
+`infrastructure/`.
 
-## Making a change
+## Hacer un cambio
 
-1. Open an issue first for anything non-trivial (new feature, behavior change) —
-   saves you from building something that gets redirected in review.
-2. Branch off `main`.
-3. Write the test first if you're fixing a bug; it should fail before your fix
-   and pass after.
-4. Run the full check locally before opening a PR:
+1. Abrí un issue primero para cualquier cosa no trivial (feature nueva, cambio
+   de comportamiento) — te ahorra construir algo que termine redirigido en la review.
+2. Ramificá desde `main`.
+3. Escribí el test primero si estás arreglando un bug; tiene que fallar antes
+   de tu fix y pasar después.
+4. Corré el chequeo completo localmente antes de abrir un PR:
    ```bash
    npm run lint
    npm run typecheck
    npm test
    ```
-5. Open the PR against `main`. Link the issue it closes.
+5. Abrí el PR contra `main`. Enlazá el issue que cierra.
 
-## Commit messages
+## Mensajes de commit
 
 [Conventional Commits](https://www.conventionalcommits.org/):
 
@@ -70,33 +70,33 @@ fix(signature): use timing-safe comparison
 docs(readme): fix quickstart compose command
 ```
 
-## Changing `packages/webhooks`
+## Modificar `packages/webhooks`
 
-Any change to the published SDK needs a changeset:
+Cualquier cambio al SDK publicado necesita un changeset:
 
 ```bash
 npx changeset
 ```
 
-Pick `patch` for bug fixes, `minor` for additive API, `major` for breaking
-changes to `sign()`/`verify()`'s signature or output format. If you change the
-signing algorithm, update `test-vectors.json` and `docs/SIGNATURE_SPEC.md` in
-the same PR — the spec and the vectors and the code all move together.
+Elegí `patch` para bug fixes, `minor` para API aditiva, `major` para cambios
+que rompan la firma o el formato de salida de `sign()`/`verify()`. Si cambiás
+el algoritmo de firmado, actualizá `test-vectors.json` y `docs/SIGNATURE_SPEC.md`
+en el mismo PR — la spec, los vectores y el código se mueven juntos.
 
 ## Tests
 
-- Unit tests live next to the code (`*.spec.ts`).
-- Integration tests use Testcontainers (real Postgres + Redis, no mocks) —
-  see `apps/api/test/`.
-- `tools/test-receiver` has modes (`ok`, `slow`, `500`, `429`, `flaky`) for
-  exercising retry/backoff/circuit-breaker behavior end-to-end.
+- Los tests unitarios viven al lado del código (`*.spec.ts`).
+- Los tests de integración usan Testcontainers (Postgres + Redis reales, sin mocks) —
+  ver `apps/api/test/`.
+- `tools/test-receiver` tiene modos (`ok`, `slow`, `500`, `429`, `flaky`) para
+  ejercitar el comportamiento de reintentos/backoff/circuit-breaker de punta a punta.
 
-## Code style
+## Estilo de código
 
-ESLint + Prettier, enforced in CI. `npm run format` before committing if you're
-not running it on save.
+ESLint + Prettier, aplicado en CI. Corré `npm run format` antes de commitear
+si no lo corrés al guardar.
 
-## Reporting bugs / requesting features
+## Reportar bugs / pedir funcionalidades
 
-Use the issue templates. For security issues, see [SECURITY.md](SECURITY.md) —
-please don't file those as public issues.
+Usá las plantillas de issue. Para problemas de seguridad, ver [SECURITY.md](SECURITY.md) —
+por favor no los reportes como issues públicos.

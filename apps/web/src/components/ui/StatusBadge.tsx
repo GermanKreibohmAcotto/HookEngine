@@ -1,4 +1,5 @@
 import type { DeliveryStatus } from '../../api/types';
+import { STATUS_LABELS } from '../../lib/statusLabels';
 
 const STYLES: Record<DeliveryStatus, string> = {
   pending: 'bg-slate-800 text-slate-300',
@@ -13,7 +14,7 @@ export function StatusBadge({ status }: { status: DeliveryStatus }) {
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STYLES[status]}`}
     >
-      {status}
+      {STATUS_LABELS[status]}
     </span>
   );
 }

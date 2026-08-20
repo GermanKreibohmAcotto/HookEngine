@@ -1,51 +1,53 @@
 # HookEngine
 
-A webhook delivery engine that treats destination failure as the normal case,
-not the exception. Ingestion never blocks on a subscriber being slow, down, or
-returning garbage — events are queued, dispatched asynchronously, retried with
-backoff, and isolated into a dead letter queue when they exhaust their retries.
+Un motor de entrega de webhooks que trata el fallo del destino como el caso
+normal, no como la excepción. La ingesta nunca se bloquea porque un
+suscriptor esté lento, caído o devuelva basura — los eventos se encolan, se
+despachan de forma asíncrona, se reintentan con backoff y se aíslan en una
+cola de mensajes muertos (DLQ) cuando agotan sus reintentos.
 
 ```
-POST /api/v1/events  →  202 Accepted (milliseconds, regardless of subscriber health)
+POST /api/v1/events  →  202 Accepted (milisegundos, sin importar la salud del suscriptor)
                      ↓
-                  Postgres (event persisted, idempotency enforced)
+                  Postgres (evento persistido, idempotencia garantizada)
                      ↓
-                  Redis / BullMQ queue
+                  Cola Redis / BullMQ
                      ↓
-      Worker → HTTP POST to subscriber, HMAC-signed, timed out, retried
+      Worker → POST HTTP al suscriptor, firmado con HMAC, con timeout, con reintentos
                      ↓
-        succeeded │ retrying (exponential backoff + jitter) │ dead (DLQ)
+        succeeded │ retrying (backoff exponencial + jitter) │ dead (DLQ)
 ```
 
-## Why
+## Por qué
 
-Every team that fans events out to external URLs re-implements the same five
-things, usually under pressure, usually after an incident:
+Todo equipo que distribuye eventos hacia URLs externas termina
+reimplementando las mismas cinco cosas, casi siempre bajo presión y casi
+siempre después de un incidente:
 
-- Ingestion that doesn't hang when a subscriber's server is unreachable.
-- Retries that don't recreate the outage they're recovering from (thundering herd).
-- A place fatally-failed events land where a human can see and replay them.
-- Payload signing subscribers can actually verify, without guessing your algorithm.
-- Visibility into what was sent, to whom, and what came back — live, not from grep-ing logs.
+- Ingesta que no se cuelga cuando el servidor de un suscriptor es inalcanzable.
+- Reintentos que no recrean la caída de la que están intentando recuperarse (thundering herd).
+- Un lugar donde aterrizan los eventos fatalmente fallidos, visible y reproducible por una persona.
+- Firmado de payloads que los suscriptores puedan verificar de verdad, sin adivinar el algoritmo.
+- Visibilidad de qué se envió, a quién y qué respondió — en vivo, no grepeando logs.
 
-HookEngine is those five things, already built.
+HookEngine es esas cinco cosas, ya construidas.
 
-## Features
+## Funcionalidades
 
-|                                       |                                                                                 |
-| ------------------------------------- | ------------------------------------------------------------------------------- |
-| **Non-blocking ingestion**            | `POST /api/v1/events` returns `202` immediately; delivery happens out-of-band   |
-| **Idempotent ingestion**              | `Idempotency-Key` header, backed by a unique DB constraint                      |
-| **Exponential backoff + full jitter** | no thundering herd when a subscriber comes back up                              |
-| **Dead Letter Queue**                 | exhausted events are isolated, inspectable, and replayable                      |
-| **HMAC-SHA256 signatures**            | Stripe/GitHub-style `X-Webhook-Signature`, verifiable via the published SDK     |
-| **Per-domain rate limiting**          | token bucket in Redis, keyed by subscriber target hostname                      |
-| **Circuit breaker per subscriber**    | stops hammering a subscriber that's sustaining 5xx failures                     |
-| **Secret rotation with grace period** | deliveries co-sign with the old and new secret until the receiver has caught up |
-| **SSRF guard**                        | subscriber URLs can't point at loopback, RFC1918, or link-local addresses       |
-| **Live dashboard**                    | delivery status, latency percentiles, response codes, payload viewer — over SSE |
+|                                                |                                                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| **Ingesta no bloqueante**                      | `POST /api/v1/events` devuelve `202` de inmediato; la entrega ocurre fuera de banda          |
+| **Ingesta idempotente**                        | header `Idempotency-Key`, respaldado por una restricción única en la base de datos           |
+| **Backoff exponencial + full jitter**          | sin thundering herd cuando un suscriptor vuelve a estar disponible                           |
+| **Cola de mensajes muertos (DLQ)**             | los eventos agotados quedan aislados, inspeccionables y reproducibles                        |
+| **Firmas HMAC-SHA256**                         | `X-Webhook-Signature` al estilo Stripe/GitHub, verificable con el SDK publicado              |
+| **Rate limiting por dominio**                  | token bucket en Redis, indexado por el hostname destino del suscriptor                       |
+| **Circuit breaker por suscriptor**             | deja de martillar a un suscriptor que sostiene fallas 5xx                                    |
+| **Rotación de secretos con período de gracia** | las entregas cofirman con el secreto viejo y el nuevo hasta que el receptor se pone al día   |
+| **Guard SSRF**                                 | las URLs de suscriptor no pueden apuntar a loopback, RFC1918 ni direcciones link-local       |
+| **Panel en vivo**                              | estado de entrega, percentiles de latencia, códigos de respuesta, visor de payload — por SSE |
 
-## Quickstart
+## Inicio rápido
 
 ```bash
 git clone https://github.com/hookengine/hookengine.git
@@ -54,8 +56,8 @@ cp .env.example .env
 docker compose up --build
 ```
 
-Open `http://localhost:5173` for the dashboard and `http://localhost:3000/health`
-to confirm the API is up. Send your first event:
+Abrí `http://localhost:5173` para el panel y `http://localhost:3000/health`
+para confirmar que la API está arriba. Enviá tu primer evento:
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/events \
@@ -65,13 +67,13 @@ curl -X POST http://localhost:3000/api/v1/events \
   -d '{"eventType":"order.created","payload":{"orderId":"ord_123"}}'
 ```
 
-Register a subscriber first through the dashboard or `POST /api/v1/subscribers`
-so there's somewhere for that event to go — see
-[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) for the full walkthrough.
+Primero registrá un suscriptor desde el panel o con `POST /api/v1/subscribers`
+para que ese evento tenga adónde ir — ver
+[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) para el recorrido completo.
 
-## Verifying a signature
+## Verificar una firma
 
-Every delivery carries:
+Cada entrega lleva:
 
 ```
 X-Webhook-Id:         <delivery-id>
@@ -80,7 +82,7 @@ X-Webhook-Timestamp:  1739812800
 X-Webhook-Signature:  v1=<hex hmac-sha256>
 ```
 
-Verify it with the published SDK — the same code HookEngine uses to sign:
+Verificala con el SDK publicado — el mismo código que usa HookEngine para firmar:
 
 ```bash
 npm install @hookengine/webhooks
@@ -90,25 +92,25 @@ npm install @hookengine/webhooks
 import { verify } from '@hookengine/webhooks';
 
 const ok = verify({
-  payload: rawRequestBody, // the exact raw bytes received, not re-serialized JSON
+  payload: rawRequestBody, // los bytes crudos exactos recibidos, no un JSON re-serializado
   secret: subscriberSecret,
   signatureHeader: req.headers['x-webhook-signature'],
   timestampHeader: req.headers['x-webhook-timestamp'],
 });
 ```
 
-No SDK for your language yet? [`packages/webhooks/test-vectors.json`](packages/webhooks/test-vectors.json)
-gives you fixed (secret, timestamp, payload, signature) tuples to validate your
-own implementation against, and [docs/SIGNATURE_SPEC.md](docs/SIGNATURE_SPEC.md)
-describes the algorithm in prose.
+¿Todavía no hay SDK para tu lenguaje? [`packages/webhooks/test-vectors.json`](packages/webhooks/test-vectors.json)
+te da tuplas fijas (secret, timestamp, payload, signature) contra las que validar
+tu propia implementación, y [docs/SIGNATURE_SPEC.md](docs/SIGNATURE_SPEC.md)
+describe el algoritmo en prosa.
 
-## Documentation
+## Documentación
 
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — module layout, why hexagonal, the two-process split
-- [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) — running this in production
-- [docs/SIGNATURE_SPEC.md](docs/SIGNATURE_SPEC.md) — the signing algorithm, language-agnostic
-- [CONTRIBUTING.md](CONTRIBUTING.md) — local dev setup, commit conventions, how to change the SDK
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — organización de módulos, por qué hexagonal, la separación en dos procesos
+- [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) — cómo correr esto en producción
+- [docs/SIGNATURE_SPEC.md](docs/SIGNATURE_SPEC.md) — el algoritmo de firmado, independiente del lenguaje
+- [CONTRIBUTING.md](CONTRIBUTING.md) — setup local, convenciones de commits, cómo modificar el SDK
 
-## License
+## Licencia
 
 [Apache-2.0](LICENSE)

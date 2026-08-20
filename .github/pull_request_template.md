@@ -1,12 +1,12 @@
-## What this does
+## Qué hace esto
 
-## Why
+## Por qué
 
 Closes #
 
-## How to verify
+## Cómo verificarlo
 
-- [ ] `npm run lint && npm run typecheck && npm test` pass locally
-- [ ] Added/updated tests for the change
-- [ ] If this touches `packages/webhooks`: ran `npx changeset`, and updated
-      `test-vectors.json` + `docs/SIGNATURE_SPEC.md` if the algorithm changed
+- [ ] `npm run lint && npm run typecheck && npm test` pasan localmente
+- [ ] Se agregaron/actualizaron tests para el cambio
+- [ ] Si esto toca `packages/webhooks`: corrí `npx changeset`, y actualicé
+      `test-vectors.json` + `docs/SIGNATURE_SPEC.md` si el algoritmo cambió

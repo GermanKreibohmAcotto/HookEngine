@@ -11,7 +11,11 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
         path: issue.path.join('.'),
         message: issue.message,
       }));
-      throw new BadRequestException({ message: 'Validation failed', issues });
+      throw new BadRequestException({
+        message: 'Validation failed',
+        code: 'VALIDATION_FAILED',
+        issues,
+      });
     }
     return result.data;
   }

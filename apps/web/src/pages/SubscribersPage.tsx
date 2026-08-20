@@ -44,7 +44,7 @@ function CreateSubscriberForm({
           setError(
             mutationError instanceof ApiError
               ? mutationError.message
-              : 'Failed to create subscriber',
+              : 'No se pudo crear el suscriptor.',
           );
         },
       },
@@ -54,17 +54,17 @@ function CreateSubscriberForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-slate-300">Name</label>
+        <label className="block text-sm font-medium text-slate-300">Nombre</label>
         <input
           required
           value={name}
           onChange={(event) => setName(event.target.value)}
           className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
-          placeholder="Billing service"
+          placeholder="Servicio de facturación"
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-300">Target URL</label>
+        <label className="block text-sm font-medium text-slate-300">URL de destino</label>
         <input
           required
           type="url"
@@ -75,7 +75,7 @@ function CreateSubscriberForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-slate-300">Event types</label>
+        <label className="block text-sm font-medium text-slate-300">Tipos de evento</label>
         <input
           required
           value={eventTypes}
@@ -83,15 +83,15 @@ function CreateSubscriberForm({
           className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none"
           placeholder="order.created, order.cancelled"
         />
-        <p className="mt-1 text-xs text-slate-500">Comma-separated.</p>
+        <p className="mt-1 text-xs text-slate-500">Separados por coma.</p>
       </div>
       {error && <p className="text-sm text-red-400">{error}</p>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" onClick={onCancel}>
-          Cancel
+          Cancelar
         </Button>
         <Button type="submit" variant="primary" disabled={createSubscriber.isPending}>
-          {createSubscriber.isPending ? 'Creating…' : 'Create subscriber'}
+          {createSubscriber.isPending ? 'Creando…' : 'Crear suscriptor'}
         </Button>
       </div>
     </form>
@@ -115,19 +115,52 @@ function SecretRevealModal({
   };
 
   return (
-    <Modal title={`${subscriber.name} — signing secret`} onClose={onClose}>
+    <Modal title={`${subscriber.name} — secreto de firma`} onClose={onClose}>
       <p className="text-sm text-amber-400">
-        This is shown once. Store it now — HookEngine never displays it again.
+        Esto se muestra una sola vez. Guardalo ahora — HookEngine no lo vuelve a mostrar.
       </p>
       <div className="mt-3 flex items-center gap-2">
         <code className="flex-1 overflow-x-auto rounded-md bg-slate-950 px-3 py-2 text-xs text-slate-200">
           {subscriber.secret}
         </code>
-        <Button onClick={handleCopy}>{copied ? 'Copied' : 'Copy'}</Button>
+        <Button onClick={handleCopy}>{copied ? 'Copiado' : 'Copiar'}</Button>
       </div>
       <div className="mt-4 flex justify-end">
         <Button variant="primary" onClick={onClose}>
-          Done
+          Listo
+        </Button>
+      </div>
+    </Modal>
+  );
+}
+
+type ConfirmAction =
+  { kind: 'delete'; id: string; name: string } | { kind: 'rotate'; id: string; name: string };
+
+function ConfirmActionModal({
+  action,
+  onConfirm,
+  onCancel,
+}: {
+  action: ConfirmAction;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const isDelete = action.kind === 'delete';
+
+  return (
+    <Modal title={isDelete ? 'Eliminar suscriptor' : 'Rotar secreto'} onClose={onCancel}>
+      <p className="text-sm text-slate-300">
+        {isDelete
+          ? `¿Eliminar el suscriptor "${action.name}"? Esto no se puede deshacer.`
+          : `¿Rotar el secreto de firma de "${action.name}"? El secreto viejo sigue funcionando durante 24h para que ${action.name} tenga tiempo de actualizarse.`}
+      </p>
+      <div className="mt-4 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button variant="primary" onClick={onConfirm}>
+          {isDelete ? 'Eliminar' : 'Rotar'}
         </Button>
       </div>
     </Modal>
@@ -141,32 +174,27 @@ export function SubscribersPage() {
   const rotateSecret = useRotateSecret();
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [revealedSecret, setRevealedSecret] = useState<CreatedSubscriber | null>(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
-  const handleDelete = (id: string, name: string): void => {
-    if (window.confirm(`Delete subscriber "${name}"? This cannot be undone.`)) {
-      deleteSubscriber.mutate(id);
+  const handleConfirm = (): void => {
+    if (!confirmAction) return;
+    if (confirmAction.kind === 'delete') {
+      deleteSubscriber.mutate(confirmAction.id);
+    } else {
+      rotateSecret.mutate(confirmAction.id, { onSuccess: setRevealedSecret });
     }
-  };
-
-  const handleRotate = (id: string, name: string): void => {
-    if (
-      window.confirm(
-        `Rotate the signing secret for "${name}"? The old secret keeps working for 24h so ${name} has time to update.`,
-      )
-    ) {
-      rotateSecret.mutate(id, { onSuccess: setRevealedSecret });
-    }
+    setConfirmAction(null);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100">Subscribers</h1>
-          <p className="text-sm text-slate-500">Who receives which events, and where.</p>
+          <h1 className="text-lg font-semibold text-slate-100">Suscriptores</h1>
+          <p className="text-sm text-slate-500">Quién recibe qué eventos, y dónde.</p>
         </div>
         <Button variant="primary" onClick={() => setShowCreateForm(true)}>
-          New subscriber
+          Nuevo suscriptor
         </Button>
       </div>
 
@@ -177,17 +205,17 @@ export function SubscribersPage() {
           </div>
         ) : !subscribers || subscribers.length === 0 ? (
           <p className="py-4 text-center text-sm text-slate-500">
-            No subscribers yet — create one to start receiving events.
+            Todavía no hay suscriptores — creá uno para empezar a recibir eventos.
           </p>
         ) : (
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-slate-800 text-xs uppercase tracking-wide text-slate-500">
-                <th className="py-2 pr-4 font-medium">Name</th>
-                <th className="py-2 pr-4 font-medium">Target URL</th>
-                <th className="py-2 pr-4 font-medium">Event types</th>
-                <th className="py-2 pr-4 font-medium">Status</th>
-                <th className="py-2 pr-4 font-medium">Max retries</th>
+                <th className="py-2 pr-4 font-medium">Nombre</th>
+                <th className="py-2 pr-4 font-medium">URL de destino</th>
+                <th className="py-2 pr-4 font-medium">Tipos de evento</th>
+                <th className="py-2 pr-4 font-medium">Estado</th>
+                <th className="py-2 pr-4 font-medium">Reintentos máx.</th>
                 <th className="py-2 pr-4 font-medium" />
               </tr>
             </thead>
@@ -214,22 +242,34 @@ export function SubscribersPage() {
                           : 'bg-slate-800 text-slate-400'
                       }`}
                     >
-                      {subscriber.isActive ? 'active' : 'paused'}
+                      {subscriber.isActive ? 'activo' : 'pausado'}
                     </button>
                   </td>
                   <td className="py-2.5 pr-4 text-slate-400">{subscriber.maxRetries}</td>
                   <td className="py-2.5 pr-4 text-right whitespace-nowrap">
                     <Button
                       variant="ghost"
-                      onClick={() => handleRotate(subscriber.id, subscriber.name)}
+                      onClick={() =>
+                        setConfirmAction({
+                          kind: 'rotate',
+                          id: subscriber.id,
+                          name: subscriber.name,
+                        })
+                      }
                     >
-                      Rotate secret
+                      Rotar secreto
                     </Button>
                     <Button
                       variant="ghost"
-                      onClick={() => handleDelete(subscriber.id, subscriber.name)}
+                      onClick={() =>
+                        setConfirmAction({
+                          kind: 'delete',
+                          id: subscriber.id,
+                          name: subscriber.name,
+                        })
+                      }
                     >
-                      Delete
+                      Eliminar
                     </Button>
                   </td>
                 </tr>
@@ -240,7 +280,7 @@ export function SubscribersPage() {
       </Card>
 
       {showCreateForm && (
-        <Modal title="New subscriber" onClose={() => setShowCreateForm(false)}>
+        <Modal title="Nuevo suscriptor" onClose={() => setShowCreateForm(false)}>
           <CreateSubscriberForm
             onCancel={() => setShowCreateForm(false)}
             onCreated={(subscriber) => {
@@ -253,6 +293,14 @@ export function SubscribersPage() {
 
       {revealedSecret && (
         <SecretRevealModal subscriber={revealedSecret} onClose={() => setRevealedSecret(null)} />
+      )}
+
+      {confirmAction && (
+        <ConfirmActionModal
+          action={confirmAction}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmAction(null)}
+        />
       )}
     </div>
   );

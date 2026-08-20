@@ -1,55 +1,57 @@
-# Security Policy
+# Política de seguridad
 
-HookEngine handles HMAC signing secrets, encrypted-at-rest subscriber credentials,
-and makes outbound HTTP requests to URLs supplied by API clients. Bugs here can
-have real consequences (secret leakage, SSRF, request forgery, signature bypass).
-We take reports seriously and ask that you do too.
+HookEngine maneja secretos de firmado HMAC, credenciales de suscriptor
+cifradas en reposo, y hace requests HTTP salientes a URLs provistas por
+clientes de la API. Los bugs acá pueden tener consecuencias reales (fuga de
+secretos, SSRF, falsificación de requests, bypass de firma). Nos tomamos en
+serio los reportes y te pedimos que vos también.
 
-## Reporting a vulnerability
+## Reportar una vulnerabilidad
 
-**Do not open a public GitHub issue for security reports.**
+**No abras un issue público de GitHub para reportes de seguridad.**
 
-Report privately through one of these channels:
+Reportá en privado por uno de estos canales:
 
 1. [GitHub Security Advisories](https://github.com/hookengine/hookengine/security/advisories/new)
-   for this repository (preferred — keeps the discussion and any fix confidential
-   until a release is ready).
-2. If GitHub Advisories isn't reachable for you, contact a maintainer directly
-   through the address listed on their GitHub profile and mark the message
-   `[SECURITY]`.
+   de este repositorio (preferido — mantiene la discusión y cualquier fix
+   confidenciales hasta que haya un release listo).
+2. Si GitHub Advisories no es accesible para vos, contactá directamente a
+   un maintainer a través de la dirección listada en su perfil de GitHub y
+   marcá el mensaje `[SECURITY]`.
 
-Please include:
+Por favor incluí:
 
-- A description of the vulnerability and its impact.
-- Steps to reproduce (a minimal repro is ideal — e.g. a `curl` request or a
-  small script against a local `docker compose up`).
-- The affected version/commit.
+- Una descripción de la vulnerabilidad y su impacto.
+- Pasos para reproducirla (un repro mínimo es ideal — por ejemplo un request
+  `curl` o un script chico contra un `docker compose up` local).
+- La versión/commit afectados.
 
-## What to expect
+## Qué esperar
 
-- **Acknowledgement:** within 3 business days.
-- **Triage & severity assessment:** within 7 business days of acknowledgement.
-- **Fix or mitigation:** timeline depends on severity; we'll keep you updated
-  throughout and credit you in the advisory (unless you'd prefer anonymity).
+- **Confirmación de recepción:** dentro de 3 días hábiles.
+- **Triage y evaluación de severidad:** dentro de 7 días hábiles desde la confirmación.
+- **Fix o mitigación:** el plazo depende de la severidad; te vamos a mantener
+  al tanto durante todo el proceso y te vamos a acreditar en el advisory
+  (salvo que prefieras anonimato).
 
-## Scope
+## Alcance
 
-In scope:
+Dentro de alcance:
 
-- The `apps/api` HTTP ingestion and worker processes.
-- The `@hookengine/webhooks` SDK (`packages/webhooks`), especially the
-  signing/verification code.
-- The SSRF guard on subscriber `target_url` registration.
-- The Docker images published under this repository.
+- Los procesos de ingesta HTTP y de worker en `apps/api`.
+- El SDK `@hookengine/webhooks` (`packages/webhooks`), especialmente el
+  código de firmado/verificación.
+- El guard SSRF sobre el registro de `target_url` de suscriptores.
+- Las imágenes Docker publicadas bajo este repositorio.
 
-Out of scope:
+Fuera de alcance:
 
-- Vulnerabilities in third-party dependencies — please report those upstream
-  (though we'd appreciate a heads-up so we can pin a patched version).
-- Findings that require an attacker to already have valid `INGEST_API_KEY` or
-  database access — at that point the deployment is already compromised.
+- Vulnerabilidades en dependencias de terceros — por favor reportalas upstream
+  (aunque agradecemos el aviso para poder fijar una versión parcheada).
+- Hallazgos que requieran que un atacante ya tenga un `INGEST_API_KEY` válido
+  o acceso a la base de datos — en ese punto el deployment ya está comprometido.
 
-## Supported versions
+## Versiones soportadas
 
-Until the first `1.0.0` release, only the latest tagged release on the `main`
-branch receives security fixes.
+Hasta el primer release `1.0.0`, sólo el último release taggeado en la rama
+`main` recibe fixes de seguridad.

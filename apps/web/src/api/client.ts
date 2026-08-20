@@ -1,9 +1,13 @@
+import { translateApiError } from './errorMessages';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 export class ApiError extends Error {
   constructor(
     readonly status: number,
     message: string,
+    readonly code?: string,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -41,11 +45,28 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const parsed: unknown = await response.json().catch(() => null);
-    const message =
-      parsed !== null && typeof parsed === 'object' && 'message' in parsed
-        ? String(parsed.message)
-        : `Request failed with ${response.status}`;
-    throw new ApiError(response.status, message);
+    const code =
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      'code' in parsed &&
+      typeof parsed.code === 'string'
+        ? parsed.code
+        : undefined;
+    const details =
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      'details' in parsed &&
+      typeof parsed.details === 'object' &&
+      parsed.details !== null
+        ? (parsed.details as Record<string, unknown>)
+        : undefined;
+
+    throw new ApiError(
+      response.status,
+      translateApiError(response.status, code, details),
+      code,
+      details,
+    );
   }
 
   if (response.status === 204) {

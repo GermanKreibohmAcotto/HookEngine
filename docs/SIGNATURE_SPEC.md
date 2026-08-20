@@ -1,121 +1,124 @@
-# Webhook Signature Specification
+# Especificación de firma de webhooks
 
-This document describes the algorithm HookEngine uses to sign webhook
-deliveries, independent of any programming language. If you're integrating in
-Node.js, use [`@hookengine/webhooks`](../packages/webhooks) instead of
-implementing this yourself — that package is the reference implementation,
-and `apps/api` signs every real delivery with the exact same code. This spec
-exists for everyone else: implementers in other languages, and anyone who
-wants to understand or audit what the SDK does under the hood.
+Este documento describe el algoritmo que usa HookEngine para firmar las
+entregas de webhooks, independiente de cualquier lenguaje de programación.
+Si estás integrando en Node.js, usá [`@hookengine/webhooks`](../packages/webhooks)
+en vez de implementar esto vos mismo — ese paquete es la implementación de
+referencia, y `apps/api` firma cada entrega real con exactamente el mismo
+código. Esta spec existe para todos los demás: implementadores en otros
+lenguajes, y cualquiera que quiera entender o auditar qué hace el SDK por dentro.
 
-If your implementation doesn't produce the same output as
-[`test-vectors.json`](../packages/webhooks/test-vectors.json) for the same
-inputs, it's wrong — treat the vectors as the source of truth over this prose
-if the two ever disagree.
+Si tu implementación no produce la misma salida que
+[`test-vectors.json`](../packages/webhooks/test-vectors.json) para las mismas
+entradas, está mal — tratá los vectores como fuente de verdad por sobre esta
+prosa si alguna vez discrepan.
 
 ## Headers
 
-Every delivery request carries:
+Cada request de entrega lleva:
 
-| Header                | Description                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `X-Webhook-Id`        | The delivery's unique ID (not the event ID — the same event can produce multiple deliveries, one per subscriber) |
-| `X-Webhook-Event`     | The event type string, e.g. `order.created`                                                                      |
-| `X-Webhook-Timestamp` | Unix time in **seconds** (not milliseconds) when the request was signed                                          |
-| `X-Webhook-Signature` | `v1=<hex-encoded HMAC-SHA256>` — see [Secret rotation](#secret-rotation) for when this carries more than one     |
+| Header                | Descripción                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `X-Webhook-Id`        | El ID único de la entrega (no el ID del evento — el mismo evento puede producir varias entregas, una por suscriptor) |
+| `X-Webhook-Event`     | El string del tipo de evento, ej. `order.created`                                                                    |
+| `X-Webhook-Timestamp` | Tiempo Unix en **segundos** (no milisegundos) de cuándo se firmó el request                                          |
+| `X-Webhook-Signature` | `v1=<HMAC-SHA256 en hex>` — ver [Rotación de secretos](#rotación-de-secretos) para cuándo lleva más de una firma     |
 
-## Signing algorithm
+## Algoritmo de firmado
 
-1. Let `payload` be the exact raw bytes of the request body, UTF-8 encoded,
-   as they will be transmitted — not a re-serialization of a parsed object.
-   Serialize once, sign that exact string, send that exact string.
-2. Let `timestamp` be the current Unix time in seconds.
-3. Build the signed content by joining the two with a literal `.`:
+1. Sea `payload` los bytes crudos exactos del cuerpo del request, codificados
+   en UTF-8, tal como se van a transmitir — no una re-serialización de un
+   objeto parseado. Serializá una vez, firmá ese string exacto, enviá ese
+   string exacto.
+2. Sea `timestamp` el tiempo Unix actual en segundos.
+3. Construí el contenido firmado uniendo ambos con un `.` literal:
 
    ```
    signed_content = "{timestamp}.{payload}"
    ```
 
-4. Compute the digest:
+4. Calculá el digest:
 
    ```
    digest = HMAC-SHA256(key = subscriber_secret, message = signed_content)
    ```
 
-   `digest` is the raw HMAC output, hex-encoded (lowercase, 64 characters).
+   `digest` es la salida cruda del HMAC, codificada en hex (minúsculas, 64 caracteres).
 
-5. The header value is the digest prefixed with a version tag:
+5. El valor del header es el digest con un prefijo de versión:
 
    ```
    X-Webhook-Signature = "v1=" + digest
    ```
 
-   The `v1=` prefix exists so the algorithm can change in the future
-   (`v2=...`) without breaking verifiers that check for a known prefix and
-   ignore signatures they don't recognize.
+   El prefijo `v1=` existe para que el algoritmo pueda cambiar en el futuro
+   (`v2=...`) sin romper a los verificadores que chequean un prefijo conocido
+   e ignoran las firmas que no reconocen.
 
-## Verifying algorithm
+## Algoritmo de verificación
 
-1. Read `X-Webhook-Timestamp` and `X-Webhook-Signature` from the request.
-2. Parse the timestamp as an integer. Reject if it isn't one.
-3. **Replay protection:** reject if `|now - timestamp| > tolerance`, where
-   `now` is the verifier's current Unix time in seconds and `tolerance`
-   defaults to `300` (5 minutes). A signature for a request from an hour ago
-   being replayed today should not verify.
-4. Strip the `v1=` prefix from `X-Webhook-Signature`. Reject if the prefix
-   isn't present — an unrecognized version means an unrecognized algorithm,
-   not a signature to fall back and check anyway.
-5. Recompute `digest` using the exact algorithm above, with the **raw request
-   body you received** as `payload` — not a value you got by parsing the body
-   as JSON and re-stringifying it. Those are not guaranteed to produce the
-   same bytes (key order, whitespace, number formatting can all differ), and
-   a mismatch there is the most common cause of "valid signatures fail to
-   verify."
-6. Compare the recomputed digest to the one from the header **in constant
-   time** (e.g. `crypto.timingSafeEqual` in Node, `hmac.compare_digest` in
-   Python, `subtle.ConstantTimeCompare` in Go). A standard `==`/`===` string
-   comparison short-circuits on the first differing byte, which leaks timing
-   information an attacker can use to forge a valid signature one byte at a
-   time. This is a real, practical attack against naive implementations —
-   not a theoretical one.
-7. The request is valid only if steps 3 and 6 both pass.
+1. Leé `X-Webhook-Timestamp` y `X-Webhook-Signature` del request.
+2. Parseá el timestamp como entero. Rechazá si no lo es.
+3. **Protección contra replay:** rechazá si `|now - timestamp| > tolerance`,
+   donde `now` es el tiempo Unix actual del verificador en segundos y
+   `tolerance` por defecto es `300` (5 minutos). Una firma de un request de
+   hace una hora que se reproduce hoy no debería verificar.
+4. Sacá el prefijo `v1=` de `X-Webhook-Signature`. Rechazá si el prefijo no
+   está presente — una versión no reconocida significa un algoritmo no
+   reconocido, no una firma para chequear igual como fallback.
+5. Recalculá `digest` usando el algoritmo exacto de arriba, con el **cuerpo
+   crudo del request que recibiste** como `payload` — no un valor que
+   obtuviste parseando el cuerpo como JSON y re-serializándolo. Eso no
+   garantiza producir los mismos bytes (el orden de claves, el whitespace, el
+   formato de números pueden diferir), y un desajuste ahí es la causa más
+   común de "firmas válidas que fallan al verificar".
+6. Comparé el digest recalculado con el del header **en tiempo constante**
+   (ej. `crypto.timingSafeEqual` en Node, `hmac.compare_digest` en Python,
+   `subtle.ConstantTimeCompare` en Go). Una comparación de strings estándar
+   `==`/`===` corta apenas encuentra el primer byte distinto, lo que filtra
+   información de timing que un atacante puede usar para forjar una firma
+   válida byte a byte. Este es un ataque real y práctico contra
+   implementaciones ingenuas — no es teórico.
+7. El request es válido sólo si los pasos 3 y 6 pasan ambos.
 
-## Secret rotation
+## Rotación de secretos
 
-When a subscriber's secret is rotated, HookEngine keeps signing with the old
-secret alongside the new one for a grace period (`SECRET_ROTATION_GRACE_PERIOD_MS`,
-24 hours by default). During that window, `X-Webhook-Signature` carries both
-signatures, comma-separated:
+Cuando se rota el secreto de un suscriptor, HookEngine sigue firmando con el
+secreto viejo junto al nuevo durante un período de gracia
+(`SECRET_ROTATION_GRACE_PERIOD_MS`, 24 horas por defecto). Durante esa
+ventana, `X-Webhook-Signature` lleva ambas firmas, separadas por coma:
 
 ```
-X-Webhook-Signature: v1=<hex signed with the new secret>, v1=<hex signed with the old secret>
+X-Webhook-Signature: v1=<hex firmado con el secreto nuevo>, v1=<hex firmado con el secreto viejo>
 ```
 
-Verify by checking whether **any** comma-separated entry matches the digest
-you compute with your currently-configured secret — `verify()` in the SDK
-already does this. This is what lets you update your configured secret at any
-point during the grace period without a delivery ever failing to verify:
-whichever secret you have, one of the two entries will match it.
+Verificá chequeando si **cualquiera** de las entradas separadas por coma
+coincide con el digest que calculás con tu secreto configurado actualmente —
+`verify()` en el SDK ya hace esto. Esto es lo que te permite actualizar tu
+secreto configurado en cualquier momento durante el período de gracia sin que
+una entrega falle jamás al verificar: cualquiera de los dos secretos que
+tengas, una de las dos entradas va a coincidir.
 
-Outside a rotation, the header has exactly one entry and behaves exactly as
-described above.
+Fuera de una rotación, el header tiene exactamente una entrada y se comporta
+exactamente como se describió arriba.
 
-## Common pitfalls
+## Errores comunes
 
-- **Re-serializing the body before verifying.** Read the raw request body as
-  a string/bytes and pass that directly to the verifier. Don't run it through
-  your framework's JSON body parser and re-`JSON.stringify` it — most
-  languages don't guarantee stable key ordering or number formatting through
-  a parse/stringify round trip, and any difference breaks the signature.
-- **Comparing digests with a non-constant-time equality check.** See step 6.
-- **Treating the timestamp as milliseconds.** It's seconds, matching Unix
-  `time()` — not JavaScript's `Date.now()`.
-- **Skipping the timestamp check entirely.** Without it, a captured request
-  can be replayed indefinitely.
+- **Re-serializar el cuerpo antes de verificar.** Leé el cuerpo crudo del
+  request como string/bytes y pasáselo directamente al verificador. No lo
+  hagas pasar por el parser JSON de tu framework y lo vuelvas a
+  `JSON.stringify` — la mayoría de los lenguajes no garantiza un orden de
+  claves ni un formato de números estable a través de un ida y vuelta de
+  parse/stringify, y cualquier diferencia rompe la firma.
+- **Comparar digests con un chequeo de igualdad que no es de tiempo constante.** Ver paso 6.
+- **Tratar el timestamp como milisegundos.** Son segundos, como el `time()`
+  de Unix — no el `Date.now()` de JavaScript.
+- **Saltearse el chequeo de timestamp por completo.** Sin él, un request
+  capturado se puede reproducir indefinidamente.
 
-## Test vectors
+## Vectores de prueba
 
 [`packages/webhooks/test-vectors.json`](../packages/webhooks/test-vectors.json)
-contains fixed `(secret, timestamp, payload)` tuples with their expected
-`X-Webhook-Signature` value. Run your implementation against every vector in
-that file before trusting it against real traffic.
+contiene tuplas fijas `(secret, timestamp, payload)` con su valor esperado de
+`X-Webhook-Signature`. Corré tu implementación contra cada vector de ese
+archivo antes de confiar en ella contra tráfico real.

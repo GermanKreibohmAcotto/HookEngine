@@ -4,6 +4,7 @@ import { useBulkRetryDeadLetters, useDlq, useRetryDeadLetter } from '../api/hook
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Spinner } from '../components/ui/Spinner';
+import { formatDateTime } from '../lib/format';
 
 export function DlqPage() {
   const { data, isLoading } = useDlq();
@@ -40,9 +41,9 @@ export function DlqPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100">Dead letter queue</h1>
+          <h1 className="text-lg font-semibold text-slate-100">Mensajes muertos</h1>
           <p className="text-sm text-slate-500">
-            Deliveries that exhausted every retry — nothing here is auto-retried.
+            Entregas que agotaron todos los reintentos — acá nada se reintenta solo.
           </p>
         </div>
         <Button
@@ -50,7 +51,7 @@ export function DlqPage() {
           disabled={selected.size === 0 || retryBulk.isPending}
           onClick={handleBulkRetry}
         >
-          {retryBulk.isPending ? 'Retrying…' : `Retry selected (${selected.size})`}
+          {retryBulk.isPending ? 'Reintentando…' : `Reintentar seleccionadas (${selected.size})`}
         </Button>
       </div>
 
@@ -61,7 +62,7 @@ export function DlqPage() {
           </div>
         ) : data.items.length === 0 ? (
           <p className="py-4 text-center text-sm text-slate-500">
-            Nothing dead right now — that&apos;s the goal.
+            No hay nada muerto ahora mismo — ese es el objetivo.
           </p>
         ) : (
           <table className="w-full text-left text-sm">
@@ -75,11 +76,11 @@ export function DlqPage() {
                     className="rounded border-slate-700 bg-slate-950"
                   />
                 </th>
-                <th className="py-2 pr-4 font-medium">Event</th>
-                <th className="py-2 pr-4 font-medium">Subscriber</th>
-                <th className="py-2 pr-4 font-medium">Target</th>
-                <th className="py-2 pr-4 font-medium">Attempts</th>
-                <th className="py-2 pr-4 font-medium">Died</th>
+                <th className="py-2 pr-4 font-medium">Evento</th>
+                <th className="py-2 pr-4 font-medium">Suscriptor</th>
+                <th className="py-2 pr-4 font-medium">Destino</th>
+                <th className="py-2 pr-4 font-medium">Intentos</th>
+                <th className="py-2 pr-4 font-medium">Murió</th>
                 <th className="py-2 pr-4 font-medium" />
               </tr>
             </thead>
@@ -101,7 +102,7 @@ export function DlqPage() {
                   </td>
                   <td className="py-2.5 pr-4 text-slate-400">{item.attemptCount}</td>
                   <td className="py-2.5 pr-4 text-slate-500">
-                    {item.completedAt ? new Date(item.completedAt).toLocaleString() : '—'}
+                    {item.completedAt ? formatDateTime(item.completedAt) : '—'}
                   </td>
                   <td className="py-2.5 pr-4 text-right">
                     <Button
@@ -109,7 +110,7 @@ export function DlqPage() {
                       disabled={retryOne.isPending}
                       onClick={() => retryOne.mutate(item.deliveryId)}
                     >
-                      Retry
+                      Reintentar
                     </Button>
                   </td>
                 </tr>
@@ -119,7 +120,7 @@ export function DlqPage() {
         )}
         {data && (
           <p className="mt-3 text-xs text-slate-500">
-            Showing {data.items.length} of {data.total}
+            Mostrando {data.items.length} de {data.total}
           </p>
         )}
       </Card>

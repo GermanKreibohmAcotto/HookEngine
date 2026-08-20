@@ -6,7 +6,6 @@ import {
   HttpCode,
   HttpStatus,
   Inject,
-  NotFoundException,
   Param,
   Patch,
   Post,
@@ -15,6 +14,7 @@ import {
 } from '@nestjs/common';
 
 import { ApiKeyGuard } from '../../shared/auth/api-key.guard';
+import { notFoundError } from '../../shared/http/error-codes';
 import { ZodValidationPipe } from '../../shared/validation/zod-validation.pipe';
 import { CreateSubscriberUseCase } from '../application/create-subscriber.use-case';
 import {
@@ -69,7 +69,7 @@ export class SubscribersController {
   async get(@Param('id') id: string): Promise<PublicSubscriber> {
     const subscriber = await this.subscribers.findById(id);
     if (!subscriber) {
-      throw new NotFoundException(`Subscriber ${id} not found`);
+      throw notFoundError(`Subscriber ${id} not found`, 'SUBSCRIBER_NOT_FOUND');
     }
     return toPublic(subscriber);
   }
@@ -82,7 +82,7 @@ export class SubscribersController {
   ): Promise<PublicSubscriber> {
     const subscriber = await this.updateSubscriber.execute(id, dto);
     if (!subscriber) {
-      throw new NotFoundException(`Subscriber ${id} not found`);
+      throw notFoundError(`Subscriber ${id} not found`, 'SUBSCRIBER_NOT_FOUND');
     }
     return toPublic(subscriber);
   }
@@ -92,7 +92,7 @@ export class SubscribersController {
   async delete(@Param('id') id: string): Promise<void> {
     const deleted = await this.subscribers.delete(id);
     if (!deleted) {
-      throw new NotFoundException(`Subscriber ${id} not found`);
+      throw notFoundError(`Subscriber ${id} not found`, 'SUBSCRIBER_NOT_FOUND');
     }
   }
 
@@ -100,7 +100,7 @@ export class SubscribersController {
   async rotate(@Param('id') id: string): Promise<PublicSubscriber & { secret: string }> {
     const result = await this.rotateSecret.execute(id);
     if (!result) {
-      throw new NotFoundException(`Subscriber ${id} not found`);
+      throw notFoundError(`Subscriber ${id} not found`, 'SUBSCRIBER_NOT_FOUND');
     }
     return { ...toPublic(result.subscriber), secret: result.plaintextSecret };
   }

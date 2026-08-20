@@ -2,8 +2,9 @@
 '@hookengine/webhooks': minor
 ---
 
-`verify()` now accepts a comma-separated `X-Webhook-Signature` header and
-succeeds if any entry matches — this is what lets a receiver keep verifying
-successfully throughout a subscriber secret rotation, regardless of which of
-the two active secrets it currently has configured. Single-signature headers
-(the common case, outside a rotation) behave exactly as before.
+`verify()` ahora acepta un header `X-Webhook-Signature` separado por comas y
+tiene éxito si cualquier entrada coincide — esto es lo que le permite a un
+receptor seguir verificando exitosamente durante toda una rotación de
+secreto de suscriptor, sin importar cuál de los dos secretos activos tenga
+configurado en ese momento. Los headers de firma única (el caso común, fuera
+de una rotación) se comportan exactamente igual que antes.

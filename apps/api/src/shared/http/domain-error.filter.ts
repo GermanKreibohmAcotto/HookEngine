@@ -23,6 +23,11 @@ export class DomainErrorFilter implements ExceptionFilter {
         ? HttpStatus.BAD_REQUEST
         : HttpStatus.UNPROCESSABLE_ENTITY;
 
-    response.status(status).json({ message: error.message, error: error.name });
+    response.status(status).json({
+      message: error.message,
+      error: error.name,
+      code: error.code,
+      details: error.details,
+    });
   }
 }

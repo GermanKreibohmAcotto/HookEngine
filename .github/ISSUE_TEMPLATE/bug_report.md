@@ -1,29 +1,29 @@
 ---
-name: Bug report
-about: Something in HookEngine isn't behaving the way it should
+name: Reporte de bug
+about: Algo en HookEngine no se está comportando como debería
 title: ''
 labels: bug
 assignees: ''
 ---
 
-## What happened
+## Qué pasó
 
-## What you expected instead
+## Qué esperabas que pasara en cambio
 
-## Steps to reproduce
+## Pasos para reproducirlo
 
 1.
 2.
 3.
 
-## Environment
+## Entorno
 
-- HookEngine version / commit:
-- Deployment: `docker compose` / Kubernetes / other:
-- Node version (if running outside Docker):
+- Versión / commit de HookEngine:
+- Deployment: `docker compose` / Kubernetes / otro:
+- Versión de Node (si corre fuera de Docker):
 
-## Logs / relevant output
+## Logs / salida relevante
 
 ```
-paste here
+pegar acá
 ```

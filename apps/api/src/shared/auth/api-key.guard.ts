@@ -1,14 +1,10 @@
 import { timingSafeEqual } from 'node:crypto';
 
-import {
-  type CanActivate,
-  type ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import type { Env } from '../config/env.schema';
+import { unauthorizedError } from '../http/error-codes';
 
 interface RequestWithHeaders {
   headers: Record<string, string | undefined>;
@@ -35,14 +31,14 @@ export class ApiKeyGuard implements CanActivate {
     const header = request.headers.authorization;
 
     if (!header?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or malformed Authorization header');
+      throw unauthorizedError('Missing or malformed Authorization header', 'AUTH_HEADER_MISSING');
     }
 
     const presented = header.slice('Bearer '.length);
     const expected = this.config.get('INGEST_API_KEY', { infer: true });
 
     if (!timingSafeEqualStrings(presented, expected)) {
-      throw new UnauthorizedException('Invalid API key');
+      throw unauthorizedError('Invalid API key', 'AUTH_KEY_INVALID');
     }
 
     return true;

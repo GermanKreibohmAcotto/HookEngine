@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Headers,
@@ -11,6 +10,7 @@ import {
 } from '@nestjs/common';
 
 import { ApiKeyGuard } from '../../shared/auth/api-key.guard';
+import { badRequestError } from '../../shared/http/error-codes';
 import { ZodValidationPipe } from '../../shared/validation/zod-validation.pipe';
 import { IngestEventUseCase } from '../application/ingest-event.use-case';
 import { type CreateEventDto, createEventSchema } from './dto/create-event.schema';
@@ -32,7 +32,7 @@ export class EventsController {
     @Res() res: MinimalResponse,
   ): Promise<void> {
     if (!idempotencyKey) {
-      throw new BadRequestException('Idempotency-Key header is required');
+      throw badRequestError('Idempotency-Key header is required', 'IDEMPOTENCY_KEY_REQUIRED');
     }
 
     // Same key, same payload, retried by a client that never saw the first

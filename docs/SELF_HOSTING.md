@@ -1,103 +1,109 @@
 # Self-hosting
 
-This covers running HookEngine somewhere that isn't your laptop. For local
-development, `README.md`'s quickstart (`docker compose up --build`) is all
-you need — come back here once you're deploying it for real.
+Esto cubre correr HookEngine en algún lugar que no sea tu laptop. Para
+desarrollo local, el inicio rápido del `README.md` (`docker compose up --build`)
+es todo lo que necesitás — volvé acá cuando lo estés desplegando de verdad.
 
-## Images
+## Imágenes
 
-Every push to `main` publishes multi-arch (`linux/amd64`, `linux/arm64`)
-images to GHCR:
+Cada push a `main` publica imágenes multi-arquitectura (`linux/amd64`,
+`linux/arm64`) a GHCR:
 
 ```
 ghcr.io/hookengine/hookengine-api:latest
 ghcr.io/hookengine/hookengine-web:latest
 ```
 
-`hookengine-api` is one image serving two entrypoints — `main.http.js` (the
-ingestion API + admin/dashboard API) and `main.worker.js` (the delivery
-worker) — selected by container `CMD`, matching how `docker-compose.yml`
-runs them. Pin a tag (`:v0.1.0`) rather than `:latest` for anything you
-actually depend on.
+`hookengine-api` es una sola imagen que sirve dos entrypoints —
+`main.http.js` (la API de ingesta + la API de admin/dashboard) y
+`main.worker.js` (el worker de entrega) — seleccionados por el `CMD` del
+contenedor, igual que como los corre `docker-compose.yml`. Fijá un tag
+(`:v0.1.0`) en vez de `:latest` para cualquier cosa de la que dependas de verdad.
 
-## Required configuration
+## Configuración requerida
 
-Every variable below is validated at boot (`apps/api/src/shared/config/env.schema.ts`)
-— a missing or malformed one and the process exits immediately instead of
-failing a request three hours later. Copy `.env.example` and fill in the
-generated secrets:
+Cada variable de abajo se valida al arrancar
+(`apps/api/src/shared/config/env.schema.ts`) — si falta una o está mal
+formada, el proceso corta la ejecución de inmediato en vez de fallar un
+request tres horas después. Copiá `.env.example` y completá los secretos
+generados:
 
 ```bash
 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"  # SECRET_ENCRYPTION_KEY
 node -e "console.log(require('node:crypto').randomBytes(24).toString('hex'))"  # INGEST_API_KEY
 ```
 
-| Variable                                                            | Purpose                                                                                                                                                                                                                  |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `DATABASE_URL`                                                      | Postgres connection string                                                                                                                                                                                               |
-| `REDIS_URL`                                                         | Redis connection string (BullMQ, rate limiter, circuit breaker, SSE fan-out all share it)                                                                                                                                |
-| `INGEST_API_KEY`                                                    | Bearer token required on every `/api/v1/*` request, including from the dashboard                                                                                                                                         |
-| `SECRET_ENCRYPTION_KEY`                                             | 32-byte hex key, AES-256-GCM — encrypts subscriber signing secrets at rest. **Losing this makes every stored secret unrecoverable and every subscriber needs re-registering.** Back it up like you'd back up a database. |
-| `CORS_ORIGIN`                                                       | Origin allowed to call the HTTP API — set to wherever `apps/web` is actually served from                                                                                                                                 |
-| `HTTP_PORT`                                                         | Default `3000`                                                                                                                                                                                                           |
-| `WORKER_CONCURRENCY`                                                | Concurrent deliveries per worker _process_ (not per replica — run more worker replicas to scale further)                                                                                                                 |
-| `DELIVERY_DEFAULT_TIMEOUT_MS` / `DELIVERY_DEFAULT_MAX_RETRIES`      | Per-subscriber defaults; overridable per subscriber via the API                                                                                                                                                          |
-| `CIRCUIT_BREAKER_FAILURE_THRESHOLD` / `_WINDOW_MS` / `_COOLDOWN_MS` | See [ARCHITECTURE.md](ARCHITECTURE.md#the-decorator-chain-fase-6)                                                                                                                                                        |
-| `SECRET_ROTATION_GRACE_PERIOD_MS`                                   | How long a rotated-out secret keeps co-signing deliveries (default 24h)                                                                                                                                                  |
-| `LOG_LEVEL`                                                         | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace`                                                                                                                                                             |
+| Variable                                                            | Propósito                                                                                                                                                                                                                                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                                      | Cadena de conexión a Postgres                                                                                                                                                                                                                                    |
+| `REDIS_URL`                                                         | Cadena de conexión a Redis (BullMQ, rate limiter, circuit breaker y fan-out de SSE la comparten)                                                                                                                                                                 |
+| `INGEST_API_KEY`                                                    | Token Bearer requerido en cada request a `/api/v1/*`, incluyendo desde el dashboard                                                                                                                                                                              |
+| `SECRET_ENCRYPTION_KEY`                                             | Clave hex de 32 bytes, AES-256-GCM — cifra los secretos de firma de los suscriptores en reposo. **Perder esta clave hace irrecuperable cada secreto guardado y obliga a re-registrar a todos los suscriptores.** Respaldala como respaldarías una base de datos. |
+| `CORS_ORIGIN`                                                       | Origen permitido para llamar a la API HTTP — apuntalo a donde sea que se sirva `apps/web`                                                                                                                                                                        |
+| `HTTP_PORT`                                                         | Por defecto `3000`                                                                                                                                                                                                                                               |
+| `WORKER_CONCURRENCY`                                                | Entregas concurrentes por _proceso_ worker (no por réplica — corré más réplicas de worker para escalar más)                                                                                                                                                      |
+| `DELIVERY_DEFAULT_TIMEOUT_MS` / `DELIVERY_DEFAULT_MAX_RETRIES`      | Valores por defecto por suscriptor; sobreescribibles por suscriptor vía la API                                                                                                                                                                                   |
+| `CIRCUIT_BREAKER_FAILURE_THRESHOLD` / `_WINDOW_MS` / `_COOLDOWN_MS` | Ver [ARCHITECTURE.md](ARCHITECTURE.md#la-cadena-de-decoradores-fase-6)                                                                                                                                                                                           |
+| `SECRET_ROTATION_GRACE_PERIOD_MS`                                   | Cuánto tiempo un secreto rotado sigue cofirmando entregas (por defecto 24h)                                                                                                                                                                                      |
+| `LOG_LEVEL`                                                         | `fatal` \| `error` \| `warn` \| `info` \| `debug` \| `trace`                                                                                                                                                                                                     |
 
-## Running it
+## Corriéndolo
 
-The two processes scale independently — that's the reason they're split.
-A rough starting point: 2+ replicas of `main.http.js` behind a load
-balancer for availability, and however many `main.worker.js` replicas your
-delivery volume needs (each one runs `WORKER_CONCURRENCY` deliveries in
-parallel; add replicas, not just concurrency, once you're past what one
-process's connection pool comfortably handles).
+Los dos procesos escalan de forma independiente — esa es la razón por la que
+están separados. Un punto de partida aproximado: 2+ réplicas de
+`main.http.js` detrás de un balanceador de carga para disponibilidad, y las
+réplicas de `main.worker.js` que tu volumen de entregas necesite (cada una
+corre `WORKER_CONCURRENCY` entregas en paralelo; sumá réplicas, no sólo
+concurrencia, una vez que superes lo que el pool de conexiones de un proceso
+maneja cómodamente).
 
-Migrations run as a one-shot job (`node dist/shared/db/migrate.js`) — see
-the `migrate` service in `docker-compose.yml` for the pattern. Run it before
-starting new `api`/`worker` replicas on a deploy, not from inside the app
-processes themselves.
+Las migraciones corren como un job de una sola vez
+(`node dist/shared/db/migrate.js`) — ver el servicio `migrate` en
+`docker-compose.yml` para el patrón. Corrélo antes de arrancar nuevas
+réplicas de `api`/`worker` en un deploy, no desde adentro de los propios
+procesos de la app.
 
-The SSE stream (`GET /api/v1/stream/deliveries`) works correctly behind a
-load balancer with multiple `main.http.js` replicas: each replica keeps its
-own Redis subscription and re-broadcasts to whichever browsers are connected
-to _it_, so it doesn't matter which replica a worker's Redis `PUBLISH`
-reaches or which replica a given browser is connected to.
+El stream SSE (`GET /api/v1/stream/deliveries`) funciona correctamente
+detrás de un balanceador de carga con varias réplicas de `main.http.js`: cada
+réplica mantiene su propia suscripción a Redis y retransmite a los browsers
+conectados a _ella_, así que no importa a qué réplica llega el `PUBLISH` de
+Redis de un worker ni a qué réplica está conectado un browser dado.
 
-## Health and readiness
+## Salud y disponibilidad
 
-`GET /health` checks Postgres and Redis connectivity and returns `503` if
-either is unreachable — point your load balancer / orchestrator's health
-check at it. The `worker` process doesn't expose HTTP at all; monitor it via
-BullMQ queue depth/age in Redis, or process liveness.
+`GET /health` chequea la conectividad a Postgres y Redis y devuelve `503` si
+alguno de los dos es inalcanzable — apuntá tu load balancer / orquestador ahí
+para el health check. El proceso `worker` no expone HTTP en absoluto;
+monitoreálo vía la profundidad/antigüedad de la cola de BullMQ en Redis, o
+liveness del proceso.
 
-## Security notes
+## Notas de seguridad
 
-- **The SSRF guard is registration-time only.** `assertSafeTargetUrl`
-  rejects loopback/private/link-local addresses (including the
-  `169.254.169.254` cloud metadata endpoint) when a subscriber is created or
-  updated, resolving DNS and checking every returned address. It does not
-  re-check at dispatch time, so a subscriber whose hostname is repointed via
-  DNS after registration (DNS rebinding) isn't caught by this layer alone —
-  network-level egress restrictions on the worker are the deeper defense if
-  that's in your threat model.
-- **Subscriber secrets are encrypted at rest**, but `SECRET_ENCRYPTION_KEY`
-  itself is only as safe as wherever you're storing it. Use your platform's
-  actual secrets manager, not a `.env` file, in production.
-- **The admin API key is a single shared credential** — there's no
-  per-operator auth in v0.1. Treat it like a root password: put the
-  dashboard behind a network you control (VPN, internal load balancer),
-  don't expose `/api/v1/*` to the open internet unless you're comfortable
-  with that key being your entire access boundary.
-- Found a real vulnerability? See [SECURITY.md](../SECURITY.md) — don't file
-  it as a public issue.
+- **El guard SSRF es sólo al momento de registro.** `assertSafeTargetUrl`
+  rechaza direcciones loopback/privadas/link-local (incluyendo el endpoint
+  de metadata de cloud `169.254.169.254`) cuando se crea o actualiza un
+  suscriptor, resolviendo DNS y chequeando cada dirección devuelta. No
+  vuelve a chequear al momento del despacho, así que un suscriptor cuyo
+  hostname se re-apunta vía DNS después del registro (DNS rebinding) no
+  queda cubierto sólo por esta capa — las restricciones de egress a nivel de
+  red en el worker son la defensa más profunda si eso está en tu modelo de amenazas.
+- **Los secretos de los suscriptores están cifrados en reposo**, pero
+  `SECRET_ENCRYPTION_KEY` en sí misma sólo es tan segura como dónde la
+  guardes. Usá el secrets manager real de tu plataforma, no un archivo
+  `.env`, en producción.
+- **La API key de admin es una sola credencial compartida** — no hay
+  autenticación por operador en v0.1. Tratala como una contraseña root: poné
+  el dashboard detrás de una red que controlás (VPN, load balancer interno),
+  no expongas `/api/v1/*` a internet abierto salvo que estés cómodo con que
+  esa clave sea todo tu perímetro de acceso.
+- ¿Encontraste una vulnerabilidad real? Ver [SECURITY.md](../SECURITY.md) —
+  no la reportes como issue público.
 
 ## Backups
 
-Postgres holds everything that matters: subscribers, events, delivery
-history. Back it up like any production database. Redis state (queue
-contents, rate limiter/circuit breaker state) is disposable — losing it
-loses in-flight retry scheduling and resets rate limits/circuits to their
-default "closed" state, not correctness.
+Postgres tiene todo lo que importa: suscriptores, eventos, historial de
+entregas. Respaldalo como cualquier base de datos de producción. El estado en
+Redis (contenido de la cola, estado del rate limiter/circuit breaker) es
+descartable — perderlo pierde la programación de reintentos en vuelo y
+resetea los rate limits/circuitos a su estado por defecto "cerrado", no la
+correctitud de los datos.

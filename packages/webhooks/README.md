@@ -1,24 +1,24 @@
 # @hookengine/webhooks
 
-Sign and verify [HookEngine](https://github.com/hookengine/hookengine) webhook
-payloads. Zero runtime dependencies, dual ESM/CJS, full TypeScript types.
+Firmá y verificá payloads de webhooks de [HookEngine](https://github.com/hookengine/hookengine).
+Cero dependencias en runtime, dual ESM/CJS, tipos de TypeScript completos.
 
-This is the exact code HookEngine itself uses to sign every delivery — not a
-reimplementation kept in sync by hand.
+Este es exactamente el mismo código que HookEngine usa para firmar cada
+entrega — no una reimplementación que se mantiene sincronizada a mano.
 
-## Install
+## Instalación
 
 ```bash
 npm install @hookengine/webhooks
 ```
 
-## Verify an incoming webhook
+## Verificar un webhook entrante
 
 ```ts
 import { verify } from '@hookengine/webhooks';
 
 const ok = verify({
-  payload: rawRequestBody, // the exact raw bytes you received — not a re-serialized object
+  payload: rawRequestBody, // los bytes crudos exactos que recibiste — no un objeto re-serializado
   secret: subscriberSecret,
   signatureHeader: req.headers['x-webhook-signature'],
   timestampHeader: req.headers['x-webhook-timestamp'],
@@ -29,15 +29,15 @@ if (!ok) {
 }
 ```
 
-`verify()` never throws — malformed input just fails verification. By
-default it rejects timestamps more than 5 minutes old or in the future
-(replay protection); override with `toleranceSeconds` if you need a wider
-window.
+`verify()` nunca lanza excepciones — una entrada malformada simplemente falla
+la verificación. Por defecto rechaza timestamps con más de 5 minutos de
+antigüedad o en el futuro (protección contra replay); sobreescribí con
+`toleranceSeconds` si necesitás una ventana más amplia.
 
-## Sign a payload
+## Firmar un payload
 
-Most consumers only need `verify`. `sign` is exported for completeness and
-for testing your own verifier against known inputs:
+La mayoría de los consumidores sólo necesita `verify`. `sign` se exporta por
+completitud y para testear tu propio verificador contra entradas conocidas:
 
 ```ts
 import { sign } from '@hookengine/webhooks';
@@ -45,14 +45,14 @@ import { sign } from '@hookengine/webhooks';
 const { timestamp, signature } = sign({ payload: rawBody, secret });
 ```
 
-## No SDK for your language?
+## ¿No hay SDK para tu lenguaje?
 
-[`test-vectors.json`](./test-vectors.json) has fixed
-`(secret, timestamp, payload)` tuples with their expected signature — run
-your own implementation against them before trusting it against real
-traffic. [`docs/SIGNATURE_SPEC.md`](https://github.com/hookengine/hookengine/blob/main/docs/SIGNATURE_SPEC.md)
-describes the algorithm in prose, independent of any language.
+[`test-vectors.json`](./test-vectors.json) tiene tuplas fijas
+`(secret, timestamp, payload)` con su firma esperada — corré tu propia
+implementación contra ellas antes de confiar en ella contra tráfico real.
+[`docs/SIGNATURE_SPEC.md`](https://github.com/hookengine/hookengine/blob/main/docs/SIGNATURE_SPEC.md)
+describe el algoritmo en prosa, independiente de cualquier lenguaje.
 
-## License
+## Licencia
 
 Apache-2.0

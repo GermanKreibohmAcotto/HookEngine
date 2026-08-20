@@ -3,7 +3,6 @@ import {
   Controller,
   Get,
   Inject,
-  NotFoundException,
   Param,
   Post,
   Query,
@@ -12,6 +11,7 @@ import {
 } from '@nestjs/common';
 
 import { ApiKeyGuard } from '../../shared/auth/api-key.guard';
+import { notFoundError } from '../../shared/http/error-codes';
 import { ZodValidationPipe } from '../../shared/validation/zod-validation.pipe';
 import type { BulkRetryResult } from '../application/retry-dead-letter.use-case';
 import { RetryDeadLetterUseCase } from '../application/retry-dead-letter.use-case';
@@ -55,7 +55,7 @@ export class DlqController {
   async retry(@Param('id') id: string): Promise<{ retried: true }> {
     const retried = await this.retryDeadLetter.execute(id);
     if (!retried) {
-      throw new NotFoundException(`No dead delivery ${id} found`);
+      throw notFoundError(`No dead delivery ${id} found`, 'DEAD_DELIVERY_NOT_FOUND');
     }
     return { retried: true };
   }

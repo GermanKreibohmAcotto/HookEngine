@@ -4,10 +4,10 @@ import { NavLink } from 'react-router-dom';
 import { useApiKey } from '../auth/ApiKeyContext';
 
 const LINKS = [
-  { to: '/', label: 'Overview', end: true },
-  { to: '/subscribers', label: 'Subscribers', end: false },
-  { to: '/deliveries', label: 'Deliveries', end: false },
-  { to: '/dlq', label: 'Dead Letters', end: false },
+  { to: '/', label: 'Resumen', end: true },
+  { to: '/subscribers', label: 'Suscriptores', end: false },
+  { to: '/deliveries', label: 'Entregas', end: false },
+  { to: '/dlq', label: 'Mensajes muertos', end: false },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -41,7 +41,7 @@ export function Layout({ children }: { children: ReactNode }) {
             onClick={clearApiKey}
             className="text-xs text-slate-500 hover:text-slate-300"
           >
-            Sign out
+            Cerrar sesión
           </button>
         </div>
       </header>

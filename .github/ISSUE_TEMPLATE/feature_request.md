@@ -1,17 +1,17 @@
 ---
-name: Feature request
-about: Propose something HookEngine doesn't do yet
+name: Solicitud de funcionalidad
+about: Proponé algo que HookEngine todavía no hace
 title: ''
 labels: enhancement
 assignees: ''
 ---
 
-## Problem
+## Problema
 
-What are you trying to do that HookEngine doesn't support today?
+¿Qué estás intentando hacer que HookEngine no soporta hoy?
 
-## Proposed solution
+## Solución propuesta
 
-## Alternatives considered
+## Alternativas consideradas
 
-## Additional context
+## Contexto adicional

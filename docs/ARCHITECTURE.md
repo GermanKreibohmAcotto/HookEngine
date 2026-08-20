@@ -1,148 +1,155 @@
-# Architecture
+# Arquitectura
 
-## The shape of the problem
+## La forma del problema
 
-A webhook engine has exactly one job that matters: never let a slow or dead
-subscriber become _your_ problem. Everything here follows from that.
+Un motor de webhooks tiene exactamente un trabajo que importa: que un
+suscriptor lento o muerto nunca se convierta en _tu_ problema. Todo lo demás
+se desprende de ahí.
 
 ```
-POST /api/v1/events                              (HTTP process)
+POST /api/v1/events                              (proceso HTTP)
         │
         ▼
-  validate, hash payload, check Idempotency-Key
+  validar, hashear payload, chequear Idempotency-Key
         │
         ▼
-  Postgres: insert event + one "pending" delivery per matching subscriber
-        │  (single transaction — either all of it lands, or none of it does)
+  Postgres: insertar evento + una entrega "pending" por suscriptor coincidente
+        │  (una sola transacción — o aterriza todo, o no aterriza nada)
         ▼
-  BullMQ: enqueue one job per delivery
+  BullMQ: encolar un job por entrega
         │
         ▼
-  202 Accepted ── the caller is done. Nothing downstream has happened yet.
+  202 Accepted ── el llamador terminó. Todavía no pasó nada río abajo.
 
 
-  BullMQ job                                      (Worker process, separate)
+  job de BullMQ                                   (proceso Worker, separado)
         │
         ▼
-  circuit breaker check (per subscriber) ── open? → reschedule, no attempt spent
-        │ closed
+  chequeo de circuit breaker (por suscriptor) ── ¿abierto? → reprogramar, sin gastar intento
+        │ cerrado
         ▼
-  token bucket check (per target domain) ── empty? → reschedule, no attempt spent
-        │ has tokens
+  chequeo de token bucket (por dominio destino) ── ¿vacío? → reprogramar, sin gastar intento
+        │ tiene tokens
         ▼
-  sign with @hookengine/webhooks, POST via undici (timeout, no redirects)
+  firmar con @hookengine/webhooks, POST vía undici (con timeout, sin seguir redirects)
         │
-        ├─ 2xx ────────────────────────────────────────► succeeded
-        ├─ 4xx (not 408/429) ──────────────────────────► dead (DLQ)
-        └─ 408 / 429 / 5xx / network error / timeout ──► retry (full jitter)
-                  or, once max_retries is exhausted ───► dead (DLQ)
+        ├─ 2xx ──────────────────────────────────────► succeeded
+        ├─ 4xx (salvo 408/429) ─────────────────────► dead (DLQ)
+        └─ 408 / 429 / 5xx / error de red / timeout ─► retry (full jitter)
+                  o, una vez agotado max_retries ────► dead (DLQ)
 ```
 
-Two things fall out of this diagram directly:
+De este diagrama se desprenden dos cosas directamente:
 
-- **Ingestion physically cannot block on a subscriber.** The HTTP process
-  never makes an outbound HTTP call. It writes to Postgres and pushes a job
-  onto a queue — both fast, both local. The only way ingestion gets slow is
-  if _Postgres_ or _Redis_ is slow, not if `subscriber-with-a-dead-server.com`
-  is.
-- **A failure in one delivery can't touch another.** Each delivery is its own
-  row, its own job, its own retry schedule. A subscriber having a bad day
-  doesn't slow down or corrupt anyone else's deliveries.
+- **La ingesta físicamente no puede bloquearse esperando a un suscriptor.** El
+  proceso HTTP nunca hace un llamado HTTP saliente. Escribe en Postgres y
+  empuja un job a una cola — ambas operaciones rápidas y locales. La única
+  forma de que la ingesta se ponga lenta es que _Postgres_ o _Redis_ estén
+  lentos, no que `suscriptor-con-servidor-muerto.com` lo esté.
+- **Un fallo en una entrega no puede tocar otra.** Cada entrega es su propia
+  fila, su propio job, su propio calendario de reintentos. Que un suscriptor
+  tenga un mal día no ralentiza ni corrompe las entregas de nadie más.
 
-## Module layout
+## Organización de módulos
 
 ```
 apps/api/src/
-├─ events/          ingestion: idempotency, fan-out to subscribers
-├─ subscriptions/   subscriber CRUD, the SSRF guard, secret encryption + rotation
-├─ delivery/         dispatch, retries, DLQ, rate limiting, circuit breaking
-├─ monitoring/       health, metrics, the SSE stream
-└─ shared/           config, db, redis — cross-cutting, no business logic
+├─ events/          ingesta: idempotencia, fan-out a suscriptores
+├─ subscriptions/   CRUD de suscriptores, el guard SSRF, cifrado + rotación de secretos
+├─ delivery/         despacho, reintentos, DLQ, rate limiting, circuit breaking
+├─ monitoring/       health, métricas, el stream SSE
+└─ shared/           config, db, redis — transversal, sin lógica de negocio
 ```
 
-Each domain module (`events`, `subscriptions`, `delivery`) is split the same
-way:
+Cada módulo de dominio (`events`, `subscriptions`, `delivery`) se divide de la
+misma forma:
 
 ```
 delivery/
-├─ domain/          entities, value objects, pure functions — zero framework imports
-├─ application/      use cases + ports (interfaces the use cases depend on)
-└─ infrastructure/   adapters: Drizzle repositories, BullMQ, undici, controllers
+├─ domain/          entidades, value objects, funciones puras — cero imports de framework
+├─ application/      casos de uso + puertos (interfaces de las que dependen los casos de uso)
+└─ infrastructure/   adaptadores: repositorios Drizzle, BullMQ, undici, controllers
 ```
 
-**The one rule that isn't negotiable:** nothing in `domain/` imports NestJS,
-Drizzle, or BullMQ. A use case in `application/` depends on a _port_
-(`WebhookDispatcher`, `DeliveryRepository`, `DeliveryQueue` — plain
-TypeScript interfaces) and `infrastructure/` provides the concrete
-implementation via Nest's DI container. Swap BullMQ for Redis Streams
-tomorrow and you're rewriting adapters, not use cases.
+**La regla que no es negociable:** nada en `domain/` importa NestJS, Drizzle
+ni BullMQ. Un caso de uso en `application/` depende de un _puerto_
+(`WebhookDispatcher`, `DeliveryRepository`, `DeliveryQueue` — interfaces
+puras de TypeScript) e `infrastructure/` provee la implementación concreta
+vía el contenedor de DI de Nest. Cambiar BullMQ por Redis Streams mañana es
+reescribir adaptadores, no casos de uso.
 
-You can see this rule pay for itself in `delivery/application/ports/webhook-dispatcher.port.ts`:
-the rate limiter and circuit breaker (see below) are implemented as
-decorators around that same `WebhookDispatcher` interface, sitting in
-`infrastructure/` right next to the real one. `ProcessDeliveryUseCase`
-never knows they exist.
+Podés ver esta regla dando resultado en
+`delivery/application/ports/webhook-dispatcher.port.ts`: el rate limiter y el
+circuit breaker (ver abajo) están implementados como decoradores alrededor de
+esa misma interfaz `WebhookDispatcher`, ubicados en `infrastructure/` justo al
+lado del real. `ProcessDeliveryUseCase` nunca sabe que existen.
 
-## Why two processes, one codebase
+## Por qué dos procesos, un solo código
 
-`apps/api/src/main.http.ts` and `main.worker.ts` boot two different Nest
-module trees (`HttpAppModule`, `WorkerAppModule`) from the same source and
-the same Docker image — only the `CMD` differs (see `apps/api/Dockerfile`
-and `docker-compose.yml`). This is deliberate, not an accident of deployment
-config:
+`apps/api/src/main.http.ts` y `main.worker.ts` arrancan dos árboles de
+módulos de Nest distintos (`HttpAppModule`, `WorkerAppModule`) desde el mismo
+código fuente y la misma imagen Docker — sólo el `CMD` difiere (ver
+`apps/api/Dockerfile` y `docker-compose.yml`). Esto es deliberado, no un
+accidente de la configuración de deployment:
 
-- They scale independently. A traffic spike on ingestion doesn't need more
-  delivery workers, and a backlog of retries doesn't need more HTTP capacity.
-- `DeliveryWorkerModule` (the consumer side — `ProcessDeliveryUseCase`, the
-  BullMQ `Worker`) is physically excluded from `HttpAppModule`'s import
-  graph. There's no code path by which starting the HTTP process
-  accidentally starts a job consumer — a class of bug that's easy to
-  introduce with a careless module import and hard to notice until two
-  HTTP replicas are quietly double-processing the same queue.
+- Escalan de forma independiente. Un pico de tráfico en la ingesta no necesita
+  más workers de entrega, y un backlog de reintentos no necesita más
+  capacidad HTTP.
+- `DeliveryWorkerModule` (el lado consumidor — `ProcessDeliveryUseCase`, el
+  `Worker` de BullMQ) está físicamente excluido del grafo de imports de
+  `HttpAppModule`. No hay ningún camino de código por el cual arrancar el
+  proceso HTTP arranque accidentalmente un consumidor de jobs — una clase de
+  bug fácil de introducir con un import de módulo descuidado y difícil de
+  notar hasta que dos réplicas HTTP están procesando la misma cola por
+  duplicado en silencio.
 
-## The decorator chain (Fase 6)
+## La cadena de decoradores (Fase 6)
 
-`WEBHOOK_DISPATCHER` resolves to three layers, wrapped in this order:
+`WEBHOOK_DISPATCHER` resuelve a tres capas, envueltas en este orden:
 
 ```
 CircuitBreakingDispatcher
   → RateLimitedDispatcher
-    → UndiciWebhookDispatcher   (the actual HTTP call)
+    → UndiciWebhookDispatcher   (el llamado HTTP real)
 ```
 
-Checked outermost-first: an open circuit short-circuits before a rate-limit
-token is even considered, since there's no point spending a domain's token
-budget on a call you're not going to make. Both checks are atomic Redis Lua
-scripts (`rate-limiter.lua`, `circuit-breaker-check.lua`,
-`circuit-breaker-report.lua`) — necessary because multiple worker
-concurrency slots can be checking the same subscriber or domain at the same
-instant, and a non-atomic check-then-act would let them all through together.
+Chequeadas de afuera hacia adentro: un circuito abierto corta antes de
+siquiera considerar un token de rate limit, ya que no tiene sentido gastar
+el presupuesto de tokens de un dominio en un llamado que no vas a hacer.
+Ambos chequeos son scripts Lua atómicos de Redis (`rate-limiter.lua`,
+`circuit-breaker-check.lua`, `circuit-breaker-report.lua`) — necesarios
+porque múltiples slots de concurrencia del worker pueden estar chequeando el
+mismo suscriptor o dominio en el mismo instante, y un check-then-act no
+atómico dejaría pasar a todos juntos.
 
-When either decorator blocks a delivery, it returns a `{ kind: 'deferred' }`
-outcome rather than throwing. `ProcessDeliveryUseCase` sees that and calls
-`job.moveToDelayed()` + throws BullMQ's `DelayedError` — which BullMQ
-special-cases to reschedule the job _without_ touching its retry-attempt
-count or emitting a `failed` event. A subscriber being rate limited or
-circuit-broken costs it nothing from its own retry budget; only a genuine
-attempt (a real HTTP call that came back with a real answer) does.
+Cuando cualquiera de los dos decoradores bloquea una entrega, devuelve un
+resultado `{ kind: 'deferred' }` en vez de lanzar una excepción.
+`ProcessDeliveryUseCase` ve eso y llama a `job.moveToDelayed()` + lanza el
+`DelayedError` de BullMQ — que BullMQ trata como caso especial para
+reprogramar el job _sin_ tocar su contador de intentos de reintento ni emitir
+un evento `failed`. Que un suscriptor esté rate-limited o con el circuito
+abierto no le cuesta nada de su propio presupuesto de reintentos; sólo un
+intento real (un llamado HTTP real que volvió con una respuesta real) sí.
 
-## Data model
+## Modelo de datos
 
-Four tables, roughly one per stage of the pipeline: `subscribers` (who),
-`events` (what, with the idempotency constraint), `deliveries` (one row per
-`event × subscriber`, tracking status/attempt count/next retry time), and
-`delivery_attempts` (append-only audit log — every real HTTP attempt, its
-response, its latency). See `apps/api/src/shared/db/schema.ts`.
+Cuatro tablas, aproximadamente una por etapa del pipeline: `subscribers`
+(quién), `events` (qué, con la restricción de idempotencia), `deliveries`
+(una fila por `evento × suscriptor`, siguiendo estado/cantidad de
+intentos/próximo horario de reintento), y `delivery_attempts` (log de
+auditoría append-only — cada intento HTTP real, su respuesta, su latencia).
+Ver `apps/api/src/shared/db/schema.ts`.
 
-Ephemeral state — token bucket levels, circuit breaker state — lives in
-Redis, not Postgres. It's reconstructible from nothing (an empty bucket
-just means "hasn't been used recently") and doesn't deserve a durable write
-on every single request.
+El estado efímero — niveles del token bucket, estado del circuit breaker —
+vive en Redis, no en Postgres. Es reconstruible desde cero (un bucket vacío
+sólo significa "no se usó hace poco") y no merece una escritura durable en
+cada request individual.
 
-## The SDK boundary
+## El límite del SDK
 
-`packages/webhooks` is the one place signing logic exists. `apps/api` signs
-outgoing deliveries by importing `sign()` from it — not by re-implementing
-HMAC-SHA256 inline. That's the whole point of publishing it: the code that
-signs and the code you'd use to verify are provably the same code, not two
-implementations someone has to remember to keep in sync.
+`packages/webhooks` es el único lugar donde existe lógica de firmado.
+`apps/api` firma las entregas salientes importando `sign()` de ahí — no
+reimplementando HMAC-SHA256 inline. Ese es todo el sentido de publicarlo: el
+código que firma y el código que usarías para verificar son demostrablemente
+el mismo código, no dos implementaciones que alguien tiene que acordarse de
+mantener sincronizadas.

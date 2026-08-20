@@ -2,8 +2,14 @@ import { promises as dns } from 'node:dns';
 
 import ipaddr from 'ipaddr.js';
 
+import type { ErrorCode } from '../../shared/http/error-codes';
+
 export class UnsafeTargetUrlError extends Error {
-  constructor(reason: string) {
+  constructor(
+    reason: string,
+    readonly code: ErrorCode,
+    readonly details: Record<string, unknown> = {},
+  ) {
     super(`Refusing to register target URL: ${reason}`);
     this.name = 'UnsafeTargetUrlError';
   }
@@ -28,6 +34,18 @@ function isBlockedAddress(address: string): boolean {
 }
 
 /**
+ * `new URL('http://[::1]/').hostname` is `"[::1]"` — the WHATWG URL spec
+ * keeps the brackets — but ipaddr.js only accepts the bracket-free form.
+ * Without this, every bracketed IPv6 literal falls through to DNS
+ * resolution instead of being classified directly, which happens to still
+ * reject loopback/private literals (DNS resolution of a bogus "hostname"
+ * fails) but would also incorrectly reject a legitimate public IPv6 target.
+ */
+function stripIPv6Brackets(hostname: string): string {
+  return hostname.startsWith('[') && hostname.endsWith(']') ? hostname.slice(1, -1) : hostname;
+}
+
+/**
  * Resolves via `dns.resolve4`/`resolve6` (real DNS queries) rather than
  * `dns.lookup` (the OS resolver via getaddrinfo) — on musl libc (Alpine,
  * i.e. our own Docker image) `dns.lookup` can hang for seconds to indefinitely
@@ -42,7 +60,13 @@ async function resolveAddresses(hostname: string): Promise<string[]> {
   if (v6.status === 'fulfilled') addresses.push(...v6.value);
 
   if (addresses.length === 0) {
-    throw new UnsafeTargetUrlError(`could not resolve hostname "${hostname}"`);
+    throw new UnsafeTargetUrlError(
+      `could not resolve hostname "${hostname}"`,
+      'TARGET_URL_DNS_FAILED',
+      {
+        hostname,
+      },
+    );
   }
   return addresses;
 }
@@ -59,21 +83,30 @@ export async function assertSafeTargetUrl(rawUrl: string): Promise<URL> {
   try {
     url = new URL(rawUrl);
   } catch {
-    throw new UnsafeTargetUrlError('not a valid URL');
+    throw new UnsafeTargetUrlError('not a valid URL', 'TARGET_URL_INVALID');
   }
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-    throw new UnsafeTargetUrlError('only http and https URLs are allowed');
+    throw new UnsafeTargetUrlError(
+      'only http and https URLs are allowed',
+      'TARGET_URL_UNSUPPORTED_PROTOCOL',
+      { protocol: url.protocol },
+    );
   }
 
   const hostname = url.hostname.toLowerCase();
   if (hostname === 'localhost') {
-    throw new UnsafeTargetUrlError('localhost is not allowed');
+    throw new UnsafeTargetUrlError('localhost is not allowed', 'TARGET_URL_LOCALHOST');
   }
 
-  if (ipaddr.isValid(hostname)) {
-    if (isBlockedAddress(hostname)) {
-      throw new UnsafeTargetUrlError(`${hostname} is a private, loopback, or link-local address`);
+  const ipLiteral = stripIPv6Brackets(hostname);
+  if (ipaddr.isValid(ipLiteral)) {
+    if (isBlockedAddress(ipLiteral)) {
+      throw new UnsafeTargetUrlError(
+        `${hostname} is a private, loopback, or link-local address`,
+        'TARGET_URL_PRIVATE_ADDRESS',
+        { hostname },
+      );
     }
     return url;
   }
@@ -84,6 +117,8 @@ export async function assertSafeTargetUrl(rawUrl: string): Promise<URL> {
     if (isBlockedAddress(address)) {
       throw new UnsafeTargetUrlError(
         `hostname "${hostname}" resolves to ${address}, a private, loopback, or link-local address`,
+        'TARGET_URL_RESOLVES_PRIVATE',
+        { hostname, address },
       );
     }
   }

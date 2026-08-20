@@ -27,8 +27,8 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
       >
         <h1 className="text-lg font-semibold text-slate-100">HookEngine</h1>
         <p className="mt-1 text-sm text-slate-400">
-          Enter the admin API key (<code className="text-slate-300">INGEST_API_KEY</code>) to
-          continue.
+          Ingresá la API key de administración (
+          <code className="text-slate-300">INGEST_API_KEY</code>) para continuar.
         </p>
         <input
           type="password"
@@ -43,7 +43,7 @@ export function ApiKeyGate({ children }: { children: ReactNode }) {
           disabled={!draft.trim()}
           className="mt-3 w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Continue
+          Continuar
         </button>
       </form>
     </div>

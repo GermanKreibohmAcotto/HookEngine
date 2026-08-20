@@ -3,6 +3,9 @@ import { useDeliveryStream } from '../api/hooks/useDeliveryStream';
 import { Card } from '../components/ui/Card';
 import { Spinner } from '../components/ui/Spinner';
 import { StatusBadge } from '../components/ui/StatusBadge';
+import { formatMs, formatPercent } from '../lib/format';
+import { STATUS_LABELS } from '../lib/statusLabels';
+import type { DeliveryStatus } from '../api/types';
 
 function StatTile({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
@@ -14,16 +17,6 @@ function StatTile({ label, value, sub }: { label: string; value: string; sub?: s
   );
 }
 
-function formatMs(ms: number | null): string {
-  if (ms === null) return '—';
-  return ms < 1000 ? `${Math.round(ms)}ms` : `${(ms / 1000).toFixed(2)}s`;
-}
-
-function formatPercent(rate: number | null): string {
-  if (rate === null) return '—';
-  return `${(rate * 100).toFixed(1)}%`;
-}
-
 export function OverviewPage() {
   const { data: metrics, isLoading } = useMetrics(60);
   const { events, connected } = useDeliveryStream();
@@ -31,8 +24,8 @@ export function OverviewPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-semibold text-slate-100">Overview</h1>
-        <p className="text-sm text-slate-500">Last 60 minutes.</p>
+        <h1 className="text-lg font-semibold text-slate-100">Resumen</h1>
+        <p className="text-sm text-slate-500">Últimos 60 minutos.</p>
       </div>
 
       {isLoading || !metrics ? (
@@ -42,21 +35,23 @@ export function OverviewPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatTile label="Success rate" value={formatPercent(metrics.successRate)} />
-            <StatTile label="p50 latency" value={formatMs(metrics.latencyMs.p50)} />
-            <StatTile label="p95 latency" value={formatMs(metrics.latencyMs.p95)} />
-            <StatTile label="p99 latency" value={formatMs(metrics.latencyMs.p99)} />
+            <StatTile label="Tasa de éxito" value={formatPercent(metrics.successRate)} />
+            <StatTile label="Latencia p50" value={formatMs(metrics.latencyMs.p50)} />
+            <StatTile label="Latencia p95" value={formatMs(metrics.latencyMs.p95)} />
+            <StatTile label="Latencia p99" value={formatMs(metrics.latencyMs.p99)} />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Card title="Deliveries by status">
+            <Card title="Entregas por estado">
               <div className="space-y-2">
                 {Object.entries(metrics.byStatus).length === 0 && (
-                  <p className="text-sm text-slate-500">No deliveries in this window.</p>
+                  <p className="text-sm text-slate-500">No hay entregas en esta ventana.</p>
                 )}
                 {Object.entries(metrics.byStatus).map(([status, count]) => (
                   <div key={status} className="flex items-center gap-3 text-sm">
-                    <span className="w-24 text-slate-400">{status}</span>
+                    <span className="w-24 text-slate-400">
+                      {STATUS_LABELS[status as DeliveryStatus]}
+                    </span>
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
                       <div
                         className="h-full rounded-full bg-indigo-500"
@@ -71,10 +66,12 @@ export function OverviewPage() {
               </div>
             </Card>
 
-            <Card title="Response status codes">
+            <Card title="Códigos de respuesta">
               <div className="space-y-2">
                 {Object.entries(metrics.statusCodeDistribution).length === 0 && (
-                  <p className="text-sm text-slate-500">No responses recorded in this window.</p>
+                  <p className="text-sm text-slate-500">
+                    No hay respuestas registradas en esta ventana.
+                  </p>
                 )}
                 {Object.entries(metrics.statusCodeDistribution)
                   .sort(([a], [b]) => a.localeCompare(b))
@@ -91,19 +88,19 @@ export function OverviewPage() {
       )}
 
       <Card
-        title="Live delivery feed"
+        title="Feed de entregas en vivo"
         action={
           <span className="flex items-center gap-1.5 text-xs text-slate-500">
             <span
               className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-slate-600'}`}
             />
-            {connected ? 'connected' : 'connecting…'}
+            {connected ? 'conectado' : 'conectando…'}
           </span>
         }
       >
         {events.length === 0 ? (
           <p className="text-sm text-slate-500">
-            Waiting for delivery activity — trigger an event and watch it show up here.
+            Esperando actividad de entregas — dispará un evento y va a aparecer acá.
           </p>
         ) : (
           <ul className="divide-y divide-slate-800">
@@ -118,7 +115,7 @@ export function OverviewPage() {
                   <span className="text-slate-500">→ {event.subscriberName}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-slate-500">
-                  <span>attempt {event.attemptNumber}</span>
+                  <span>intento {event.attemptNumber}</span>
                   {event.responseStatus !== null && <span>HTTP {event.responseStatus}</span>}
                   {event.latencyMs !== null && <span>{formatMs(event.latencyMs)}</span>}
                 </div>
