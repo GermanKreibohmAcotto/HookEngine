@@ -1,3 +1,4 @@
+import { Check, Copy } from 'lucide-react';
 import { useState } from 'react';
 
 export function PayloadViewer({ value }: { value: unknown }) {
@@ -16,11 +17,12 @@ export function PayloadViewer({ value }: { value: unknown }) {
       <button
         type="button"
         onClick={handleCopy}
-        className="absolute right-2 top-2 rounded bg-slate-800 px-2 py-1 text-xs text-slate-300 hover:bg-slate-700"
+        className="absolute right-2 top-2 inline-flex items-center gap-1.5 rounded-md bg-surface-container-high px-2 py-1 font-label-sm text-label-sm text-on-surface-variant transition-colors hover:bg-surface-container-highest hover:text-on-surface"
       >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
         {copied ? 'Copiado' : 'Copiar'}
       </button>
-      <pre className="max-h-80 overflow-auto rounded-md bg-slate-950 p-3 pt-8 text-xs text-slate-300">
+      <pre className="max-h-80 overflow-auto rounded-lg bg-surface-container-lowest p-3 pt-9 font-label-md text-body-sm text-on-surface-variant">
         {json}
       </pre>
     </div>

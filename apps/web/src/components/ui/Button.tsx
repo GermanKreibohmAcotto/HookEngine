@@ -3,10 +3,10 @@ import type { ButtonHTMLAttributes } from 'react';
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 
 const VARIANT_STYLES: Record<Variant, string> = {
-  primary: 'bg-indigo-600 text-white hover:bg-indigo-500',
-  secondary: 'bg-slate-800 text-slate-200 hover:bg-slate-700',
-  danger: 'bg-red-900 text-red-100 hover:bg-red-800',
-  ghost: 'bg-transparent text-slate-300 hover:bg-slate-800',
+  primary: 'bg-primary text-on-primary hover:bg-primary-fixed-dim shadow-sm',
+  secondary: 'bg-surface-container-high text-on-surface hover:bg-surface-container-highest',
+  danger: 'bg-error/10 text-error hover:bg-error/20',
+  ghost: 'bg-transparent text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
 };
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -16,7 +16,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export function Button({ variant = 'secondary', className = '', ...props }: ButtonProps) {
   return (
     <button
-      className={`rounded-md px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_STYLES[variant]} ${className}`}
+      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 font-label-md text-label-md transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${VARIANT_STYLES[variant]} ${className}`}
       {...props}
     />
   );
