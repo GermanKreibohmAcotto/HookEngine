@@ -28,7 +28,7 @@
     "@nestjs/platform-express": "^11.2.1",
     "bullmq": "^6.1.2",
     "drizzle-orm": "^0.45.2",
-    "ioredis": "^5.11.1",
+    "ioredis": "^6.0.0",
     "ipaddr.js": "^2.5.0",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
