@@ -1,7 +1,7 @@
 # Build context is the repo root (see docker-compose.yml) because this is an
 # npm workspaces monorepo — the lockfile at the root is the source of truth.
 
-FROM node:22-alpine AS base
+FROM node:26-alpine AS base
 WORKDIR /app
 
 FROM base AS deps
