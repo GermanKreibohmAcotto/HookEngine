@@ -10,8 +10,8 @@ Cada push a `main` publica imágenes multi-arquitectura (`linux/amd64`,
 `linux/arm64`) a GHCR:
 
 ```
-ghcr.io/hookengine/hookengine-api:latest
-ghcr.io/hookengine/hookengine-web:latest
+ghcr.io/germankreibohmacotto/hookengine-api:latest
+ghcr.io/germankreibohmacotto/hookengine-web:latest
 ```
 
 `hookengine-api` es una sola imagen que sirve dos entrypoints —

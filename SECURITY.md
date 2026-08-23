@@ -12,7 +12,7 @@ serio los reportes y te pedimos que vos también.
 
 Reportá en privado por uno de estos canales:
 
-1. [GitHub Security Advisories](https://github.com/hookengine/hookengine/security/advisories/new)
+1. [GitHub Security Advisories](https://github.com/germankreibohmacotto/hookengine/security/advisories/new)
    de este repositorio (preferido — mantiene la discusión y cualquier fix
    confidenciales hasta que haya un release listo).
 2. Si GitHub Advisories no es accesible para vos, contactá directamente a

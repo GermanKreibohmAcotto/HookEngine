@@ -8,7 +8,7 @@ local, las convenciones, y cómo un cambio llega desde tu máquina hasta `main`.
 Requisitos: Node.js 22+, Docker + Docker Compose.
 
 ```bash
-git clone https://github.com/hookengine/hookengine.git
+git clone https://github.com/germankreibohmacotto/hookengine.git
 cd hookengine
 cp .env.example .env          # después editá los secretos generados, ver abajo
 npm install

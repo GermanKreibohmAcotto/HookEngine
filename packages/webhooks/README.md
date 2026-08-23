@@ -1,6 +1,6 @@
 # @hookengine/webhooks
 
-Firmá y verificá payloads de webhooks de [HookEngine](https://github.com/hookengine/hookengine).
+Firmá y verificá payloads de webhooks de [HookEngine](https://github.com/germankreibohmacotto/hookengine).
 Cero dependencias en runtime, dual ESM/CJS, tipos de TypeScript completos.
 
 Este es exactamente el mismo código que HookEngine usa para firmar cada
@@ -50,7 +50,7 @@ const { timestamp, signature } = sign({ payload: rawBody, secret });
 [`test-vectors.json`](./test-vectors.json) tiene tuplas fijas
 `(secret, timestamp, payload)` con su firma esperada — corré tu propia
 implementación contra ellas antes de confiar en ella contra tráfico real.
-[`docs/SIGNATURE_SPEC.md`](https://github.com/hookengine/hookengine/blob/main/docs/SIGNATURE_SPEC.md)
+[`docs/SIGNATURE_SPEC.md`](https://github.com/germankreibohmacotto/hookengine/blob/main/docs/SIGNATURE_SPEC.md)
 describe el algoritmo en prosa, independiente de cualquier lenguaje.
 
 ## Licencia

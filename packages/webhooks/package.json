@@ -46,10 +46,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hookengine/hookengine.git",
+    "url": "git+https://github.com/germankreibohmacotto/hookengine.git",
     "directory": "packages/webhooks"
   },
-  "homepage": "https://github.com/hookengine/hookengine/tree/main/packages/webhooks#readme",
+  "homepage": "https://github.com/germankreibohmacotto/hookengine/tree/main/packages/webhooks#readme",
   "keywords": [
     "webhooks",
     "hmac",

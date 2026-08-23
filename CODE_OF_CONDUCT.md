@@ -62,7 +62,7 @@ evento en línea u offline.
 
 Los casos de comportamiento abusivo, acosador o de otro modo inaceptable
 pueden reportarse a quienes mantienen el proyecto abriendo un
-[GitHub Security Advisory](https://github.com/hookengine/hookengine/security/advisories/new)
+[GitHub Security Advisory](https://github.com/germankreibohmacotto/hookengine/security/advisories/new)
 privado (ver [SECURITY.md](SECURITY.md)) o, si eso no es apropiado para el
 reporte, escribiendo por correo electrónico a los maintainers listados en
 ese archivo. Todas las quejas van a ser revisadas e investigadas de forma
