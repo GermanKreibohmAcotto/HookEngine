@@ -109,7 +109,6 @@ describe el algoritmo en prosa.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — organización de módulos, por qué hexagonal, la separación en dos procesos
 - [docs/SELF_HOSTING.md](docs/SELF_HOSTING.md) — cómo correr esto en producción
 - [docs/SIGNATURE_SPEC.md](docs/SIGNATURE_SPEC.md) — el algoritmo de firmado, independiente del lenguaje
-- [docs/DESIGN_SYSTEM.md](docs/DESIGN_SYSTEM.md) — tokens y convenciones del dashboard
 - [CONTRIBUTING.md](CONTRIBUTING.md) — setup local, convenciones de commits, cómo modificar el SDK
 
 ## Licencia

@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 
-/* Self-hosted — see docs/DESIGN_SYSTEM.md for why (this is self-hosted software,
-   often deployed with no outbound internet). Only the weights actually used below. */
+/* Self-hosted: this is self-hosted software, often deployed with no outbound
+   internet, so fonts can't depend on a CDN. Only the weights actually used below. */
 @import '@fontsource/plus-jakarta-sans/latin-400.css';
 @import '@fontsource/plus-jakarta-sans/latin-600.css';
 @import '@fontsource/plus-jakarta-sans/latin-700.css';
@@ -10,10 +10,9 @@
 
 /*
  * "Deep Infrastructure Dark" — token names follow Material Design 3
- * (surface / on-surface / *-container / outline-variant, …) so they read the
- * same as docs/DESIGN_SYSTEM.md and the original Stitch design file. Ported
- * from the design's Tailwind v3 config to v4's CSS-based theme — see that doc
- * for the full mapping.
+ * (surface / on-surface / *-container / outline-variant, …), same as the
+ * original Stitch design file. Ported from the design's Tailwind v3 config
+ * to v4's CSS-based theme (@theme instead of theme.extend).
  */
 @theme {
   --color-surface: #131313;
