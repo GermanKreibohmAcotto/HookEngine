@@ -26,14 +26,14 @@
     "release": "npm run build -w @hookengine/webhooks && changeset publish"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^1.0.0",
-    "@changesets/cli": "^3.0.0",
+    "@changesets/changelog-github": "^1.0.1",
+    "@changesets/cli": "^3.0.3",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22.20.1",
-    "eslint": "^10.8.1",
+    "@types/node": "^26.6.1",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.5",
-    "prettier": "^3.9.6",
-    "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0"
+    "prettier": "^3.9.7",
+    "typescript": "^7.0.2",
+    "typescript-eslint": "^8.70.0"
   }
 }
